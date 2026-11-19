@@ -1,0 +1,407 @@
+'use strict';
+// Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
+// Markierung für die Offline-Prüfung in sw.js: build-7
+
+let liveGame = null;     // das laufende Spiel
+let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
+let benchOpen = false;
+let tickTimer = null;
+let wakeLock = null;
+let pitchObserver = null;
+
+const PHASE_NAMES = { pre: 'Vor Anpfiff', h1: '1. Halbzeit', break: 'Halbzeitpause', h2: '2. Halbzeit', end: 'Spielende' };
+
+// ---------- Uhr und Spielminute ----------
+// Die Uhr speichert die Startzeit. So läuft sie auch weiter, wenn das Handy
+// gesperrt oder die App geschlossen ist.
+
+function ensureClock(g) {
+  if (!g.clock) g.clock = { phase: 'pre', running: false, since: 0, acc: 0 };
+  if (!g.stoppage) g.stoppage = { 1: 0, 2: 0 };
+  if (!g.events) g.events = [];
+}
+
+function clockMs(g) {
+  const c = g.clock;
+  return c.acc + (c.running ? Date.now() - c.since : 0);
+}
+
+function curHalf(g) {
+  return g.clock.phase === 'pre' || g.clock.phase === 'h1' ? 1 : 2;
+}
+
+// Spielminute nach Fußball-Zählung: 0:00–0:59 ist die 1. Minute.
+// Nach Ablauf der Halbzeit: "25+1", "25+2" …
+function minuteOf(g, half, sec) {
+  const H = g.halfMinutes;
+  const m = Math.floor(sec / 60) + 1;
+  return m <= H ? { min: (half - 1) * H + m, extra: 0 } : { min: half * H, extra: m - H };
+}
+function minuteLabel(g, ev) {
+  const { min, extra } = minuteOf(g, ev.half, ev.sec);
+  return extra ? `${min}+${extra}` : `${min}`;
+}
+
+// Zeitstempel für ein Ereignis "jetzt"
+function nowStamp(g) {
+  if (g.clock.phase === 'break') return { half: 2, sec: 0 }; // Wechsel in der Pause zählt zum Beginn der 2. HZ
+  return { half: curHalf(g), sec: Math.floor(clockMs(g) / 1000) };
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+function clockText(g) {
+  const H = g.halfMinutes;
+  const ph = g.clock.phase;
+  const base = (curHalf(g) - 1) * H * 60;
+  let sec = ph === 'pre' ? 0 : ph === 'break' ? H * 60 : Math.floor(clockMs(g) / 1000);
+  const lim = H * 60;
+  if (ph === 'break') return { main: `${pad2(H)}:00`, extra: '' };
+  if (sec < lim) {
+    const t = base + sec;
+    return { main: `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`, extra: '' };
+  }
+  const over = sec - lim;
+  return { main: `${pad2((base + lim) / 60)}:00`, extra: `+${Math.floor(over / 60)}:${pad2(over % 60)}` };
+}
+
+function score(g) {
+  return {
+    us: g.events.filter(e => e.type === 'goal').length,
+    them: g.events.filter(e => e.type === 'oppGoal').length,
+  };
+}
+
+// Speichern läuft im Hintergrund (in der richtigen Reihenfolge), damit die Anzeige sofort reagiert
+function saveLive() {
+  return DB.put('games', liveGame).catch(() => toast('Speichern fehlgeschlagen!', 5000));
+}
+
+// ---------- Display anlassen ----------
+
+async function keepScreenOn() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* nicht schlimm, dann eben ohne */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (liveGame && document.visibilityState === 'visible') { keepScreenOn(); drawLive(); }
+});
+
+// ---------- Seite ----------
+
+pages.live = {
+  title: 'Spiel',
+  fullscreen: true,
+  async render() {
+    const game = await currentGame();
+    if (!game) {
+      liveGame = null;
+      return `<div class="placeholder"><p>Kein laufendes Spiel.</p>
+        <button class="btn primary" onclick="resetTo('')">Zur Startseite</button></div>`;
+    }
+    ensureClock(game);
+    liveGame = game;
+    const kader = byId(await DB.all('players'));
+    livePlayers = {};
+    for (const id of game.squad) {
+      livePlayers[id] = { ...game.roster[id], id, photo: kader[id] ? kader[id].photo : null };
+    }
+    return `<div class="live" id="live">
+      <div class="score">
+        <div class="score-row">
+          <button class="icon-btn" id="live-back" aria-label="Zurück">&#8592;</button>
+          <span class="team">${esc(game.team)}</span>
+          <span class="goals" id="goals"></span>
+          <span class="team opp">${esc(game.opponent)}</span>
+        </div>
+        <div class="clock-row">
+          <span class="half-tag" id="half-tag"></span>
+          <span class="clock" id="clock"></span>
+          <span class="clock-extra" id="clock-extra"></span>
+          <button class="clock-btn" id="clock-btn"></button>
+          <button class="nz-btn" id="nz-btn" aria-label="Nachspielzeit">+</button>
+        </div>
+        <div class="phase-row" id="phase-row"></div>
+      </div>
+      <div class="pitch-wrap" id="pitch-wrap"></div>
+      <div class="bench-panel" id="bench-panel" ${benchOpen ? '' : 'hidden'}>
+        <div class="bench-head">Bank · Spieler auf einen Feldspieler ziehen = Wechsel</div>
+        <div class="bench-strip" id="live-bench" data-drop="bench"></div>
+      </div>
+      <div class="live-bar">
+        <button class="btn" id="btn-log">📋 Protokoll</button>
+        <button class="btn primary" id="btn-bench"></button>
+      </div>
+    </div>`;
+  },
+  after() {
+    if (!liveGame) return;
+    document.getElementById('live-back').addEventListener('click', () => goBack(''));
+    document.getElementById('clock-btn').addEventListener('click', clockButton);
+    document.getElementById('nz-btn').addEventListener('click', stoppageDialog);
+    document.getElementById('btn-log').addEventListener('click', showLog);
+    document.getElementById('btn-bench').addEventListener('click', () => {
+      benchOpen = !benchOpen;
+      drawLive();
+    });
+    makeDraggable(document.getElementById('live'), onLiveDrop);
+
+    // Spielfeld so groß wie möglich, ohne zu scrollen
+    const wrap = document.getElementById('pitch-wrap');
+    pitchObserver = new ResizeObserver(fitPitch);
+    pitchObserver.observe(wrap);
+
+    drawLive();
+    tickTimer = setInterval(drawClock, 500);
+    keepScreenOn();
+  },
+  leave() {
+    clearInterval(tickTimer);
+    if (pitchObserver) pitchObserver.disconnect();
+    pitchObserver = null;
+    if (wakeLock) wakeLock.release().catch(() => {});
+    wakeLock = null;
+    liveGame = null;
+    hideToast();
+  }
+};
+
+function fitPitch() {
+  const wrap = document.getElementById('pitch-wrap');
+  const pitch = wrap && wrap.querySelector('.pitch');
+  if (!pitch) return;
+  const w = wrap.clientWidth - 24, h = wrap.clientHeight - 16;
+  pitch.style.width = Math.max(200, Math.min(w, h * 5 / 6)) + 'px';
+}
+
+function drawLive() {
+  const g = liveGame;
+  if (!g || !document.getElementById('live')) return;
+  const s = score(g);
+  document.getElementById('goals').textContent = `${s.us} : ${s.them}`;
+
+  document.getElementById('pitch-wrap').innerHTML = renderPitch(g.formation, g.slots, livePlayers);
+  fitPitch();
+
+  const bench = sortPlayers(g.squad.filter(id => !g.slots.includes(id)).map(id => livePlayers[id]));
+  document.getElementById('bench-panel').hidden = !benchOpen;
+  document.getElementById('live-bench').innerHTML = bench.length
+    ? bench.map(p => `<div class="bench-item" data-drag="bench:${p.id}">${avatar(p, 'bench-av', initials(p.name))}<span class="slot-label">${esc(p.number)}</span></div>`).join('')
+    : '<span class="hint light">Niemand auf der Bank</span>';
+  document.getElementById('btn-bench').textContent = benchOpen ? 'Bank ▼' : `Bank ▲ (${bench.length})`;
+  drawClock();
+}
+
+function drawClock() {
+  const g = liveGame;
+  if (!g || !document.getElementById('clock')) return;
+  const c = g.clock, ph = c.phase;
+  const t = clockText(g);
+  document.getElementById('clock').textContent = t.main;
+  document.getElementById('clock-extra').textContent = t.extra;
+  document.getElementById('half-tag').textContent = PHASE_NAMES[ph];
+
+  const btn = document.getElementById('clock-btn');
+  btn.hidden = ph === 'end';
+  btn.textContent = c.running ? '⏸' : '▶';
+  btn.classList.toggle('running', c.running);
+  btn.setAttribute('aria-label', c.running ? 'Uhr anhalten' : 'Uhr starten');
+
+  const half = curHalf(g);
+  const nz = g.stoppage[half] || 0;
+  document.getElementById('nz-btn').textContent = nz ? `+${nz}` : '+';
+
+  const row = document.getElementById('phase-row');
+  let html = '';
+  if (ph === 'pre') html = '<span>▶ Anpfiff startet die Uhr</span>';
+  else if (ph === 'break') html = '<span>▶ startet die 2. Halbzeit</span>';
+  else if (ph === 'h1' && !c.running) html = '<button class="phase-btn" data-act="endHalf">1. Halbzeit beenden</button>';
+  else if (ph === 'h2' && !c.running) html = '<button class="phase-btn" data-act="endGame">Spiel beenden</button>';
+  else if (ph === 'end') html = '<span>Abgepfiffen · Bericht folgt in Etappe 7</span>';
+  if (row.dataset.html !== html) {
+    row.dataset.html = html;
+    row.innerHTML = html;
+    const b = row.querySelector('[data-act]');
+    if (b) b.addEventListener('click', b.dataset.act === 'endHalf' ? endHalf : endGame);
+  }
+}
+
+// ---------- Uhr bedienen ----------
+
+async function clockButton() {
+  const g = liveGame, c = g.clock;
+  if (c.phase === 'end') return;
+  if (c.running) {
+    c.acc += Date.now() - c.since;
+    c.running = false;
+  } else {
+    if (c.phase === 'pre') c.phase = 'h1';
+    if (c.phase === 'break') { c.phase = 'h2'; c.acc = 0; }
+    c.since = Date.now();
+    c.running = true;
+  }
+  drawClock();
+  saveLive();
+}
+
+async function endHalf() {
+  const ok = await dialog({
+    title: '1. Halbzeit beenden?',
+    text: 'Die Uhr springt danach auf den Start der 2. Halbzeit.',
+    buttons: [
+      { label: 'Abbrechen', value: false, cls: 'ghost' },
+      { label: 'Halbzeit', value: true, cls: 'primary' },
+    ],
+  });
+  if (!ok || !liveGame) return;
+  const c = liveGame.clock;
+  liveGame.half1Ms = c.acc;
+  c.phase = 'break';
+  c.acc = 0;
+  c.running = false;
+  drawClock();
+  saveLive();
+}
+
+async function endGame() {
+  const ok = await dialog({
+    title: 'Spiel beenden?',
+    text: 'Abpfiff. Der Spielbericht kommt in Etappe 7.',
+    buttons: [
+      { label: 'Abbrechen', value: false, cls: 'ghost' },
+      { label: 'Abpfiff', value: true, cls: 'primary' },
+    ],
+  });
+  if (!ok || !liveGame) return;
+  liveGame.clock.phase = 'end';
+  liveGame.clock.running = false;
+  drawClock();
+  saveLive();
+}
+
+async function stoppageDialog() {
+  const g = liveGame;
+  const val = { 1: g.stoppage[1] || 0, 2: g.stoppage[2] || 0 };
+  const ok = await dialog({
+    title: 'Nachspielzeit',
+    text: 'Angezeigte Nachspielzeit in Minuten. Tore und Wechsel nach Ablauf der Halbzeit erscheinen automatisch als „25+1“, „25+2“ …',
+    html: [1, 2].map(h => `<div class="form-row nz-row"><span>${h}. Halbzeit</span>
+      <div class="stepper" data-h="${h}"><button type="button" data-d="-1">−</button><span class="val">${val[h]}</span><button type="button" data-d="1">+</button></div></div>`).join(''),
+    init(el) {
+      el.querySelectorAll('.stepper').forEach(st => st.addEventListener('click', e => {
+        const b = e.target.closest('[data-d]');
+        if (!b) return;
+        const h = st.dataset.h;
+        val[h] = Math.min(15, Math.max(0, val[h] + +b.dataset.d));
+        st.querySelector('.val').textContent = val[h];
+      }));
+    },
+    buttons: [
+      { label: 'Abbrechen', value: false, cls: 'ghost' },
+      { label: 'Übernehmen', value: true, cls: 'primary' },
+    ],
+  });
+  if (!ok || !liveGame) return;
+  liveGame.stoppage = val;
+  drawClock();
+  saveLive();
+}
+
+// ---------- Wechsel und Positionstausch ----------
+
+function num(id) { return livePlayers[id] ? livePlayers[id].number : '?'; }
+
+function undoAction(snap, msg) {
+  return {
+    label: 'Rückgängig',
+    run: async () => {
+      if (!liveGame) return;
+      liveGame.slots = snap.slots;
+      liveGame.lineup = snap.lineup;
+      liveGame.events = snap.events;
+      drawLive();
+      saveLive();
+      toast(msg);
+    }
+  };
+}
+
+async function onLiveDrop(src, dst) {
+  const g = liveGame;
+  if (!g || dst.type !== 'slot') return; // auf die Bank ziehen geht im Spiel nicht
+  const snap = { slots: [...g.slots], lineup: [...g.lineup], events: [...g.events] };
+
+  if (src.type === 'slot') {
+    if (src.i === dst.i) return;
+    [g.slots[src.i], g.slots[dst.i]] = [g.slots[dst.i], g.slots[src.i]];
+    if (g.clock.phase === 'pre') g.lineup = [...g.slots];
+    drawLive();
+    saveLive();
+    toast(`Positionen getauscht: #${num(g.slots[dst.i])} ↔ #${num(g.slots[src.i])}`, 5000, undoAction(snap, 'Tausch rückgängig gemacht'));
+    return;
+  }
+
+  // Bankspieler auf Feldspieler = Wechsel
+  const outId = g.slots[dst.i];
+  const inId = src.id;
+  g.slots[dst.i] = inId;
+  if (g.clock.phase === 'pre') {
+    // Vor dem Anpfiff ist das kein Wechsel, sondern eine Änderung der Startaufstellung
+    g.lineup = [...g.slots];
+    drawLive();
+    saveLive();
+    toast(`Startaufstellung: #${num(inId)} für #${num(outId)}`, 5000, undoAction(snap, 'Änderung rückgängig gemacht'));
+    return;
+  }
+  const ev = { id: newId(), type: 'sub', ...nowStamp(g), out: outId, in: inId };
+  g.events.push(ev);
+  drawLive();
+  saveLive();
+  toast(`${minuteLabel(g, ev)}'  Wechsel: #${num(inId)} für #${num(outId)}`, 5000, undoAction(snap, 'Wechsel rückgängig gemacht'));
+}
+
+// ---------- Protokoll ----------
+
+function sortedEvents(g) {
+  return [...g.events].sort((a, b) => a.half - b.half || a.sec - b.sec);
+}
+
+function playerText(id) {
+  const p = livePlayers[id];
+  return p ? `#${p.number} ${esc(p.name)}` : '?';
+}
+
+function showLog() {
+  const g = liveGame;
+  const evs = sortedEvents(g);
+  const rows = evs.map(ev => {
+    if (ev.type === 'sub') {
+      return `<li class="log-row"><span class="log-min">${minuteLabel(g, ev)}'</span>
+        <span class="log-ico">⇄</span>
+        <span class="log-text">rein ${playerText(ev.in)}<br><small>raus ${playerText(ev.out)}</small></span></li>`;
+    }
+    return '';
+  }).join('');
+  const sh = sheet('Protokoll', `
+    ${evs.length ? `<ul class="log">${rows}</ul>` : '<p class="hint">Noch keine Ereignisse.</p>'}
+    <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
+  sh.el.querySelector('#discard').addEventListener('click', async () => {
+    sh.close();
+    const ok = await dialog({
+      title: 'Spiel verwerfen?',
+      text: `${g.team} – ${g.opponent} wird komplett gelöscht.`,
+      buttons: [
+        { label: 'Abbrechen', value: false, cls: 'ghost' },
+        { label: 'Verwerfen', value: true, cls: 'danger' },
+      ],
+    });
+    if (!ok) return;
+    await discardGame(g);
+    toast('Spiel gelöscht');
+    resetTo('');
+  });
+}

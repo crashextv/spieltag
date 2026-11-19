@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-6
-const APP_VERSION = '3.1 (Etappe 3: Spiel anlegen, mit Ziehen)';
+// Markierung für die Offline-Prüfung in sw.js: build-7
+const APP_VERSION = '4 (Etappe 4+5: Spielansicht, Wechsel, Uhr)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -67,14 +67,16 @@ async function currentGame() {
   return id ? DB.get('games', id) : undefined;
 }
 
-// Dialog mit Knöpfen; liefert den Wert des gedrückten Knopfs
-function dialog({ title, text, buttons }) {
+// Dialog mit Knöpfen; liefert den Wert des gedrückten Knopfs.
+// Optional: eigener Inhalt (html) und init(el), um ihn zu bedienen.
+function dialog({ title, text, html, init, buttons }) {
   return new Promise(resolve => {
     const wrap = document.createElement('div');
     wrap.className = 'dlg-wrap';
     wrap.innerHTML = `<div class="dlg" role="dialog">
       ${title ? `<h2>${esc(title)}</h2>` : ''}
       ${text ? `<p>${esc(text)}</p>` : ''}
+      ${html ? `<div class="dlg-body">${html}</div>` : ''}
       <div class="dlg-btns">
         ${buttons.map((b, i) => `<button data-i="${i}" class="btn ${b.cls || ''}">${esc(b.label)}</button>`).join('')}
       </div></div>`;
@@ -85,6 +87,7 @@ function dialog({ title, text, buttons }) {
       resolve(b ? buttons[b.dataset.i].value : undefined);
     });
     document.body.appendChild(wrap);
+    if (init) init(wrap.querySelector('.dlg'));
   });
 }
 
@@ -100,9 +103,9 @@ function sheet(title, html) {
   return { el: wrap.querySelector('.sheet-body'), close };
 }
 
-// Kurze Meldung unten (später auch mit "Rückgängig")
+// Kurze Meldung unten, optional mit Knopf (z. B. "Rückgängig")
 let toastTimer;
-function toast(msg, ms = 2500) {
+function toast(msg, ms = 2500, action) {
   let el = document.getElementById('toast');
   if (!el) {
     el = document.createElement('div');
@@ -110,10 +113,23 @@ function toast(msg, ms = 2500) {
     el.className = 'toast';
     document.body.appendChild(el);
   }
-  el.textContent = msg;
+  el.innerHTML = `<span>${esc(msg)}</span>` +
+    (action ? `<button class="toast-btn">${esc(action.label)}</button>` : '');
+  el.classList.toggle('has-btn', !!action);
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
+  if (action) {
+    el.querySelector('.toast-btn').onclick = () => {
+      el.hidden = true;
+      clearTimeout(toastTimer);
+      action.run();
+    };
+  }
+}
+function hideToast() {
+  const el = document.getElementById('toast');
+  if (el) el.hidden = true;
 }
 
 // ---------- Startseite und Platzhalter ----------
@@ -197,10 +213,15 @@ function resetTo(route) {
 }
 
 let renderToken = 0;
+let activePage = null;
 async function show() {
   const [name, param] = location.hash.slice(1).split('/');
   const page = pages[name] || pages.start;
   const token = ++renderToken;
+  // Vorige Seite aufräumen (z. B. Uhr-Anzeige der Spielansicht stoppen)
+  if (activePage && activePage.leave) activePage.leave();
+  activePage = page;
+  document.body.classList.toggle('live-mode', !!page.fullscreen);
   titleEl.textContent = page.title;
   backBtn.hidden = page === pages.start;
   view.classList.add('busy'); // keine Doppel-Tipps auf die alte Seite

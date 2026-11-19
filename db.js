@@ -1,7 +1,7 @@
 'use strict';
 // Datenspeicher auf dem Gerät (IndexedDB). Nichts verlässt das Handy.
 // Bereiche: players (Kader), games (Spiele), meta (Einstellungen)
-// Markierung für die Offline-Prüfung in sw.js: build-6
+// Markierung für die Offline-Prüfung in sw.js: build-7
 const DB = (() => {
   let dbPromise;
 

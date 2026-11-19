@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-6 */
+/* Markierung für die Offline-Prüfung in sw.js: build-7 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -418,6 +418,133 @@ main.busy { pointer-events: none; }
 .slot.drop-hover .avatar { outline: 4px solid var(--akzent); outline-offset: 2px; }
 .bench-strip.drop-hover { outline: 3px dashed var(--akzent); outline-offset: 4px; border-radius: 12px; }
 .bench-strip { min-height: 76px; padding: 4px; }
+
+/* ---------- Spielansicht ---------- */
+
+body.live-mode .topbar { display: none; }
+body.live-mode main { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+
+.live { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+.score {
+  padding: calc(6px + env(safe-area-inset-top)) 10px 8px;
+  background: var(--gruen);
+  color: #fff;
+}
+.score-row { display: flex; align-items: center; gap: 6px; }
+.score-row .icon-btn { flex-shrink: 0; width: 40px; height: 40px; font-size: 24px; }
+.team {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+.team.opp { text-align: right; padding-right: 6px; }
+.goals {
+  min-width: 84px;
+  font-size: 32px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.clock-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; }
+.half-tag {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.18);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.clock { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+.clock-extra { min-width: 0; color: var(--akzent); font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.clock-btn {
+  width: 50px;
+  height: 50px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--gruen);
+  font-size: 22px;
+}
+.clock-btn.running { background: var(--akzent); color: #000; }
+.nz-btn {
+  min-width: 44px;
+  height: 40px;
+  padding: 0 10px;
+  border: 2px solid rgba(255,255,255,.7);
+  border-radius: 20px;
+  background: transparent;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+}
+.phase-row { min-height: 22px; margin-top: 4px; text-align: center; font-size: 14px; color: rgba(255,255,255,.85); }
+.phase-btn {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--gruen);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pitch-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+}
+.pitch-wrap .pitch { flex-shrink: 0; }
+
+.bench-panel {
+  padding: 8px 12px 10px;
+  background: #263238;
+  animation: sheet-up .2s ease-out;
+}
+.bench-head { margin-bottom: 8px; color: rgba(255,255,255,.75); font-size: 13px; }
+.bench-panel .bench-strip { min-height: 70px; }
+.bench-panel .slot-label { background: #fff; }
+.hint.light { color: rgba(255,255,255,.7); }
+
+.live-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: var(--karte);
+  border-top: 1px solid var(--rand);
+}
+.live-bar .btn { flex: 1; }
+
+/* In der Spielansicht liegt die Meldung über der unteren Knopfleiste, damit Feld und Bank frei bleiben */
+body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-inset-bottom)); min-height: 52px; }
+.toast.has-btn { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+.toast[hidden] { display: none; }
+.toast-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--akzent);
+  color: #000;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.log { list-style: none; margin: 0 0 8px; padding: 0; }
+.log-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--rand); }
+.log-min { min-width: 52px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.log-ico { width: 22px; text-align: center; }
+.log-text { flex: 1; line-height: 1.35; }
+.log-text small { color: var(--text-leise); font-size: 14px; }
+
+.dlg-body { margin-bottom: 16px; }
+.nz-row { margin-bottom: 10px; }
 
 /* ---------- Fenster von unten ---------- */
 

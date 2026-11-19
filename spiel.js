@@ -1,6 +1,6 @@
 'use strict';
 // Spiel anlegen in drei Schritten: Spieldaten → Wer ist dabei? → Startaufstellung
-// Markierung für die Offline-Prüfung in sw.js: build-6
+// Markierung für die Offline-Prüfung in sw.js: build-7
 
 // Der Entwurf wird nach jeder Änderung gespeichert, damit nichts verloren geht,
 // falls das Handy zwischendurch gesperrt wird.
@@ -352,46 +352,4 @@ pages.aufstellung = {
   }
 };
 
-// ---------- Laufendes Spiel (Platzhalter bis Etappe 4) ----------
-
-pages.live = {
-  title: 'Spiel',
-  async render() {
-    const game = await currentGame();
-    if (!game) return `<div class="placeholder"><p>Kein laufendes Spiel.</p>
-      <button class="btn primary" onclick="resetTo('')">Zur Startseite</button></div>`;
-    const kader = byId(await DB.all('players'));
-    const players = {};
-    for (const id of game.squad) players[id] = { ...game.roster[id], id, photo: kader[id] ? kader[id].photo : null };
-    const bench = sortPlayers(game.squad.filter(id => !game.slots.includes(id)).map(id => players[id]));
-    titleEl.textContent = `${game.team} – ${game.opponent}`;
-    return `
-      <p class="hint">${fmtDate(game.date)} · ${game.halfMinutes} Min. pro Halbzeit · ${formationText(game.formation)}</p>
-      ${renderPitch(game.formation, game.slots, players)}
-      <h3 class="sub">Bank</h3>
-      <div class="bench-strip">${bench.length
-        ? bench.map(p => `<div class="bench-item">${avatar(p, 'bench-av', initials(p.name))}<span class="slot-label">${esc(p.number)}</span></div>`).join('')
-        : '<span class="hint">Niemand auf der Bank</span>'}</div>
-      <div class="note">Die eigentliche Spielansicht mit Uhr, Toren und Wechseln kommt in <b>Etappe 4–6</b>.</div>
-      <button class="btn danger wide" id="discard">Spiel verwerfen</button>`;
-  },
-  after() {
-    const btn = document.getElementById('discard');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
-      const game = await currentGame();
-      const ok = await dialog({
-        title: 'Spiel verwerfen?',
-        text: `${game.team} – ${game.opponent} wird gelöscht.`,
-        buttons: [
-          { label: 'Abbrechen', value: false, cls: 'ghost' },
-          { label: 'Verwerfen', value: true, cls: 'danger' },
-        ],
-      });
-      if (!ok) return;
-      await discardGame(game);
-      toast('Spiel gelöscht');
-      resetTo('');
-    });
-  }
-};
+// Die Spielansicht selbst steht in live.js.

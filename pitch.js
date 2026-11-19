@@ -1,6 +1,6 @@
 'use strict';
 // Spielfeld: unsere Hälfte mit festen Plätzen gemäß Formation
-// Markierung für die Offline-Prüfung in sw.js: build-6
+// Markierung für die Offline-Prüfung in sw.js: build-7
 //
 // Platz 0 ist immer der Torwart, danach Abwehr (links → rechts),
 // Mittelfeld und Sturm.
@@ -101,8 +101,13 @@ function makeDraggable(container, onDrop) {
   container.addEventListener('pointerup', end);
   container.addEventListener('pointercancel', end);
 
-  // Nach dem Ziehen keinen zusätzlichen "Tipp" auslösen
+  // Nach dem Ziehen keinen zusätzlichen "Tipp" auf Spieler oder Plätze auslösen
+  // (andere Knöpfe wie die Uhr bleiben sofort bedienbar)
   container.addEventListener('click', e => {
-    if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+    if (suppressClick && e.target.closest('[data-drag],[data-drop]')) {
+      e.stopPropagation();
+      e.preventDefault();
+      suppressClick = false;
+    }
   }, true);
 }
