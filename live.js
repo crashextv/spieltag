@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-8
+// Markierung für die Offline-Prüfung in sw.js: build-9
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
@@ -118,7 +118,7 @@ async function resumePlay() {
 
 function score(g) {
   return {
-    us: g.events.filter(e => e.type === 'goal').length,
+    us: g.events.filter(e => e.type === 'goal' || e.type === 'ownGoalOpp').length,
     them: g.events.filter(e => e.type === 'oppGoal').length,
   };
 }
@@ -185,6 +185,7 @@ pages.live = {
       </div>
       <div class="live-bar">
         <button class="btn" id="btn-log">📋 Protokoll</button>
+        <button class="btn opp-btn" id="btn-opp">🥅 Gegentor</button>
         <button class="btn primary" id="btn-bench"></button>
       </div>
     </div>`;
@@ -195,6 +196,8 @@ pages.live = {
     document.getElementById('clock-btn').addEventListener('click', clockButton);
     document.getElementById('nz-btn').addEventListener('click', () => stoppageDialog());
     document.getElementById('btn-log').addEventListener('click', showLog);
+    document.getElementById('btn-opp').addEventListener('click', oppGoalDialog);
+    document.getElementById('pitch-wrap').addEventListener('click', onPitchTap);
     document.getElementById('btn-bench').addEventListener('click', () => {
       benchOpen = !benchOpen;
       drawLive();
@@ -423,6 +426,92 @@ async function onLiveDrop(src, dst) {
   toast(`${minuteLabel(g, ev)}'  Wechsel: #${num(inId)} für #${num(outId)}`, 5000, undoAction(snap, 'Wechsel rückgängig gemacht'));
 }
 
+// ---------- Tore ----------
+
+// Doppeltipp auf einen Feldspieler erkennen
+let lastTap = { slot: null, t: 0 };
+function onPitchTap(e) {
+  const s = e.target.closest('.slot');
+  if (!s) return;
+  const i = +s.dataset.slot;
+  const now = Date.now();
+  if (lastTap.slot === i && now - lastTap.t < 450) {
+    lastTap = { slot: null, t: 0 };
+    ourGoal(i);
+  } else {
+    lastTap = { slot: i, t: now };
+  }
+}
+
+function canScore(g) {
+  const ph = g.clock.phase;
+  if (ph === 'pre') { toast('Erst anpfeifen (▶), dann zählen Tore.'); return false; }
+  if (ph === 'break') { toast('In der Halbzeitpause gibt es keine Tore.'); return false; }
+  if (ph === 'end') { toast('Das Spiel ist schon beendet.'); return false; }
+  return true;
+}
+
+function addGoalEvent(ev, msgFn, cheer) {
+  const g = liveGame;
+  const snap = { slots: [...g.slots], lineup: [...g.lineup], events: [...g.events] };
+  g.events.push(ev);
+  drawLive();
+  saveLive();
+  if (cheer) {
+    buzz(200);
+    const wrap = document.getElementById('pitch-wrap');
+    const flash = document.createElement('div');
+    flash.className = 'goal-flash';
+    flash.textContent = 'TOR!';
+    wrap.appendChild(flash);
+    setTimeout(() => flash.remove(), 1300);
+  }
+  const s = score(g);
+  toast(`${minuteLabel(g, ev)}'  ${msgFn(s)}`, 5000, undoAction(snap, 'Tor rückgängig gemacht'));
+}
+
+function ourGoal(i) {
+  const g = liveGame;
+  if (!g || !canScore(g)) return;
+  const id = g.slots[i];
+  if (!id) return;
+  addGoalEvent({ id: newId(), type: 'goal', ...nowStamp(g), scorer: id },
+    s => `TOR ${s.us}:${s.them} – #${num(id)} ${livePlayers[id].name}`, true);
+}
+
+function ownGoalOpp() {
+  const g = liveGame;
+  if (!g || !canScore(g)) return;
+  addGoalEvent({ id: newId(), type: 'ownGoalOpp', ...nowStamp(g) },
+    s => `TOR ${s.us}:${s.them} – Eigentor des Gegners`, true);
+}
+
+async function oppGoalDialog() {
+  const g = liveGame;
+  if (!g || !canScore(g)) return;
+  const stamp = nowStamp(g); // Minute beim Antippen festhalten, nicht erst nach der Eingabe
+  let input;
+  const ok = await dialog({
+    title: `Gegentor (${minuteLabel(g, stamp)}')`,
+    text: 'Rückennummer des Torschützen (kann leer bleiben):',
+    html: '<input class="num-input" id="opp-num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="z. B. 10">',
+    init(el) {
+      input = el.querySelector('#opp-num');
+      input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+      setTimeout(() => input.focus(), 50);
+    },
+    buttons: [
+      { label: 'Abbrechen', value: false, cls: 'ghost' },
+      { label: 'Eintragen', value: true, cls: 'danger' },
+    ],
+  });
+  if (!ok || !liveGame) return;
+  const n = parseInt(input.value, 10);
+  const number = n >= 1 && n <= 99 ? n : null;
+  addGoalEvent({ id: newId(), type: 'oppGoal', ...stamp, number },
+    s => `Gegentor ${s.us}:${s.them}` + (number ? ` – #${number}` : ''), false);
+}
+
 // ---------- Protokoll ----------
 
 function sortedEvents(g) {
@@ -437,18 +526,36 @@ function playerText(id) {
 function showLog() {
   const g = liveGame;
   const evs = sortedEvents(g);
+  let us = 0, them = 0;
   const rows = evs.map(ev => {
+    const min = `<span class="log-min">${minuteLabel(g, ev)}'</span>`;
     if (ev.type === 'sub') {
-      return `<li class="log-row"><span class="log-min">${minuteLabel(g, ev)}'</span>
-        <span class="log-ico">⇄</span>
+      return `<li class="log-row">${min}<span class="log-ico">⇄</span>
         <span class="log-text">rein ${playerText(ev.in)}<br><small>raus ${playerText(ev.out)}</small></span></li>`;
+    }
+    if (ev.type === 'goal') {
+      us++;
+      return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
+        <span class="log-text"><b>TOR ${us}:${them}</b> – ${playerText(ev.scorer)}</span></li>`;
+    }
+    if (ev.type === 'ownGoalOpp') {
+      us++;
+      return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
+        <span class="log-text"><b>TOR ${us}:${them}</b> – Eigentor des Gegners</span></li>`;
+    }
+    if (ev.type === 'oppGoal') {
+      them++;
+      return `<li class="log-row opp">${min}<span class="log-ico">🥅</span>
+        <span class="log-text"><b>Gegentor ${us}:${them}</b>${ev.number ? ` – #${ev.number}` : ''}</span></li>`;
     }
     return '';
   }).join('');
   const sh = sheet('Protokoll', `
     ${evs.length ? `<ul class="log">${rows}</ul>` : '<p class="hint">Noch keine Ereignisse.</p>'}
+    <button class="btn wide" id="own-goal-opp">⚽ Eigentor des Gegners (Tor für uns)</button>
     <button class="btn wide" id="to-report">📄 Bericht (Zwischenstand)</button>
     <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
+  sh.el.querySelector('#own-goal-opp').addEventListener('click', () => { sh.close(); ownGoalOpp(); });
   sh.el.querySelector('#to-report').addEventListener('click', () => { sh.close(); go('bericht/' + g.id); });
   sh.el.querySelector('#discard').addEventListener('click', async () => {
     sh.close();

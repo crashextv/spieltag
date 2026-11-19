@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-8
-const APP_VERSION = '4.1 (Spielende automatisch, Spielbericht)';
+// Markierung für die Offline-Prüfung in sw.js: build-9
+const APP_VERSION = '6 (Etappe 6: Tore)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');

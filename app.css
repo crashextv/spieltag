@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-8 */
+/* Markierung für die Offline-Prüfung in sw.js: build-9 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -547,6 +547,45 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 .nz-row { margin-bottom: 10px; }
 
 .phase-btn.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.7); margin-left: 6px; }
+
+/* ---------- Tore ---------- */
+
+.live-bar .btn { padding: 10px 6px; font-size: 15px; }
+.opp-btn { color: #b71c1c; border-color: #e0b4b4; }
+.pitch-wrap { position: relative; }
+.goal-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 72px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-shadow: 0 4px 18px rgba(0,0,0,.5);
+  pointer-events: none;
+  animation: goal-pop 1.3s ease-out forwards;
+}
+@keyframes goal-pop {
+  0% { transform: scale(.4); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 1; }
+  70% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+.num-input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid var(--rand);
+  border-radius: 12px;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+}
+.num-input:focus { outline: none; border-color: #c62828; }
+.log-row.goal .log-text b { color: var(--gruen); }
+.log-row.opp .log-text b { color: #b71c1c; }
 
 /* ---------- Spielbericht ---------- */
 

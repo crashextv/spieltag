@@ -1,7 +1,7 @@
 'use strict';
 // Spielbericht: Endstand, Spielzeit, Aufstellung, Tore und Wechsel im Liveticker-Stil.
 // Zum Kopieren (DFBnet), Herunterladen (Textdatei) und Teilen.
-// Markierung für die Offline-Prüfung in sw.js: build-8
+// Markierung für die Offline-Prüfung in sw.js: build-9
 
 function fmtMs(ms) {
   const s = Math.round(ms / 1000);
@@ -44,6 +44,9 @@ function reportData(g) {
       us++;
       scorers[ev.scorer] = (scorers[ev.scorer] || 0) + 1;
       ticker.push({ min, kind: 'goal', text: `TOR ${us}:${them} – ${pl(ev.scorer)}` });
+    } else if (ev.type === 'ownGoalOpp') {
+      us++;
+      ticker.push({ min, kind: 'goal', text: `TOR ${us}:${them} – Eigentor des Gegners` });
     } else if (ev.type === 'oppGoal') {
       them++;
       ticker.push({ min, kind: 'opp', text: `Gegentor ${us}:${them}` + (ev.number ? ` – #${ev.number}` : '') });
