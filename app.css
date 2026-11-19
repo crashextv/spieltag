@@ -11,6 +11,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 html, body {
   margin: 0;
@@ -56,6 +57,8 @@ main {
   padding: 16px;
 }
 
+main.busy { pointer-events: none; }
+
 .menu { display: grid; gap: 12px; }
 
 .menu-btn {
@@ -97,6 +100,166 @@ main {
   padding: 48px 16px;
 }
 .placeholder .sym { font-size: 56px; }
+
+/* ---------- Kader ---------- */
+
+.hint { margin: 0 0 10px; font-size: 14px; color: var(--text-leise); }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+  background: var(--karte);
+  color: var(--text);
+  font-size: 19px;
+  text-align: left;
+}
+.row:active { background: #e8efe8; }
+.row .num { min-width: 32px; font-weight: 700; color: var(--gruen); text-align: right; }
+.row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .chev { font-size: 26px; color: var(--text-leise); }
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--rand);
+}
+.avatar.ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gruen-hell);
+  color: #fff;
+  font-weight: 700;
+  font-size: 22px;
+}
+.avatar.big { width: 132px; height: 132px; font-size: 52px; }
+
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  padding: 16px 22px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--gruen);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+}
+.fab:active { background: var(--gruen-hell); }
+.fab-space { height: 84px; }
+
+/* ---------- Formular ---------- */
+
+.photo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 20px;
+}
+.photo-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-leise);
+}
+.field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  background: var(--karte);
+  color: var(--text);
+  font-size: 20px;
+}
+.field input:focus { outline: 2px solid var(--gruen-hell); border-color: transparent; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  background: var(--karte);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+}
+.btn:active { filter: brightness(.93); }
+.btn.primary { background: var(--gruen); border-color: var(--gruen); color: #fff; }
+.btn.danger { background: #fff; border-color: #e0b4b4; color: #c62828; }
+.dlg .btn.danger { background: #c62828; border-color: #c62828; color: #fff; }
+.btn.ghost { background: transparent; }
+.btn.wide { width: 100%; margin-top: 8px; min-height: 56px; font-size: 19px; }
+.btn.danger.wide { margin-top: 28px; }
+
+.error {
+  margin: -4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdecea;
+  color: #b71c1c;
+  font-size: 16px;
+}
+
+/* ---------- Dialog und Meldung ---------- */
+
+.dlg-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,.45);
+}
+.dlg {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--karte);
+}
+.dlg h2 { margin: 0 0 8px; font-size: 21px; }
+.dlg p { margin: 0 0 18px; color: var(--text-leise); line-height: 1.4; }
+.dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.dlg-btns .btn { flex: 1; }
+
+.toast {
+  position: fixed;
+  left: 16px; right: 16px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 40;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #263238;
+  color: #fff;
+  font-size: 16px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
 
 .banner {
   position: fixed;

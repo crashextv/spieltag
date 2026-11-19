@@ -2,12 +2,13 @@
 // Service Worker: speichert alle App-Dateien auf dem Handy,
 // damit die App auch ohne Internet startet.
 // Bei jeder neuen Version die Nummer erhöhen!
-const CACHE = 'spieltag-v2';
+const CACHE = 'spieltag-v3';
 
 const FILES = [
   './',
   './index.html',
   './app.css',
+  './db.js',
   './app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
