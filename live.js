@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-7
+// Markierung für die Offline-Prüfung in sw.js: build-8
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
@@ -63,6 +63,57 @@ function clockText(g) {
   }
   const over = sec - lim;
   return { main: `${pad2((base + lim) / 60)}:00`, extra: `+${Math.floor(over / 60)}:${pad2(over % 60)}` };
+}
+
+// Ende einer Halbzeit: eingestellte Minuten plus eingetragene Nachspielzeit
+function limitMs(g, half) {
+  return (g.halfMinutes + ((g.stoppage && g.stoppage[half]) || 0)) * 60000;
+}
+
+function buzz(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+}
+
+// Wird regelmäßig aufgerufen: Ist die Zeit abgelaufen, endet die Halbzeit bzw. das Spiel.
+// Auch wenn das Handy gesperrt war, wird die Spielzeit genau auf das Ende begrenzt.
+function checkTimeUp() {
+  const g = liveGame;
+  if (!g) return;
+  const c = g.clock;
+  if (!c.running || (c.phase !== 'h1' && c.phase !== 'h2')) return;
+  const lim = limitMs(g, curHalf(g));
+  if (clockMs(g) < lim) return;
+  c.acc = lim;
+  c.running = false;
+  if (c.phase === 'h1') {
+    g.half1Ms = lim;
+    c.phase = 'break';
+    c.acc = 0;
+    buzz([500, 200, 500]);
+    saveLive();
+    drawLive();
+    toast('Halbzeit! Die 1. Halbzeit ist abgelaufen.', 6000);
+  } else {
+    c.phase = 'end';
+    g.endedAt = Date.now();
+    buzz([800, 300, 800, 300, 800]);
+    saveLive().then(() => go('bericht/' + g.id));
+  }
+}
+
+// Schiedsrichter spielt doch weiter: Halbzeit bzw. Spiel wieder aufnehmen
+async function resumePlay() {
+  const g = liveGame;
+  const c = g.clock;
+  const half = c.phase === 'break' ? 1 : 2;
+  const ok = await stoppageDialog(half);
+  if (!ok || !liveGame) return;
+  if (c.phase === 'break') { c.phase = 'h1'; c.acc = g.half1Ms || 0; }
+  else if (c.phase === 'end') { c.phase = 'h2'; delete g.endedAt; }
+  c.running = false;
+  drawLive();
+  saveLive();
+  toast('Weiter mit ▶');
 }
 
 function score(g) {
@@ -142,7 +193,7 @@ pages.live = {
     if (!liveGame) return;
     document.getElementById('live-back').addEventListener('click', () => goBack(''));
     document.getElementById('clock-btn').addEventListener('click', clockButton);
-    document.getElementById('nz-btn').addEventListener('click', stoppageDialog);
+    document.getElementById('nz-btn').addEventListener('click', () => stoppageDialog());
     document.getElementById('btn-log').addEventListener('click', showLog);
     document.getElementById('btn-bench').addEventListener('click', () => {
       benchOpen = !benchOpen;
@@ -156,7 +207,8 @@ pages.live = {
     pitchObserver.observe(wrap);
 
     drawLive();
-    tickTimer = setInterval(drawClock, 500);
+    tickTimer = setInterval(() => { checkTimeUp(); drawClock(); }, 500);
+    checkTimeUp(); // falls die Zeit abgelaufen ist, während die App zu war
     keepScreenOn();
   },
   leave() {
@@ -218,15 +270,15 @@ function drawClock() {
   const row = document.getElementById('phase-row');
   let html = '';
   if (ph === 'pre') html = '<span>▶ Anpfiff startet die Uhr</span>';
-  else if (ph === 'break') html = '<span>▶ startet die 2. Halbzeit</span>';
+  else if (ph === 'break') html = '<span>▶ startet die 2. Halbzeit</span> <button class="phase-btn ghost" data-act="resume">1. HZ fortsetzen</button>';
   else if (ph === 'h1' && !c.running) html = '<button class="phase-btn" data-act="endHalf">1. Halbzeit beenden</button>';
   else if (ph === 'h2' && !c.running) html = '<button class="phase-btn" data-act="endGame">Spiel beenden</button>';
-  else if (ph === 'end') html = '<span>Abgepfiffen · Bericht folgt in Etappe 7</span>';
+  else if (ph === 'end') html = '<button class="phase-btn" data-act="report">📄 Bericht</button> <button class="phase-btn ghost" data-act="resume">Weiterspielen</button>';
   if (row.dataset.html !== html) {
     row.dataset.html = html;
     row.innerHTML = html;
-    const b = row.querySelector('[data-act]');
-    if (b) b.addEventListener('click', b.dataset.act === 'endHalf' ? endHalf : endGame);
+    const acts = { endHalf, endGame, resume: resumePlay, report: () => go('bericht/' + g.id) };
+    row.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', acts[b.dataset.act]));
   }
 }
 
@@ -270,25 +322,30 @@ async function endHalf() {
 async function endGame() {
   const ok = await dialog({
     title: 'Spiel beenden?',
-    text: 'Abpfiff. Der Spielbericht kommt in Etappe 7.',
+    text: 'Abpfiff – danach wird der Spielbericht angezeigt.',
     buttons: [
       { label: 'Abbrechen', value: false, cls: 'ghost' },
       { label: 'Abpfiff', value: true, cls: 'primary' },
     ],
   });
   if (!ok || !liveGame) return;
-  liveGame.clock.phase = 'end';
-  liveGame.clock.running = false;
-  drawClock();
-  saveLive();
+  const g = liveGame;
+  g.clock.phase = 'end';
+  g.clock.running = false;
+  g.endedAt = Date.now();
+  await saveLive();
+  go('bericht/' + g.id);
 }
 
-async function stoppageDialog() {
+// Liefert true, wenn übernommen wurde
+async function stoppageDialog(focusHalf) {
   const g = liveGame;
   const val = { 1: g.stoppage[1] || 0, 2: g.stoppage[2] || 0 };
   const ok = await dialog({
-    title: 'Nachspielzeit',
-    text: 'Angezeigte Nachspielzeit in Minuten. Tore und Wechsel nach Ablauf der Halbzeit erscheinen automatisch als „25+1“, „25+2“ …',
+    title: focusHalf ? `${focusHalf}. Halbzeit fortsetzen` : 'Nachspielzeit',
+    text: focusHalf
+      ? 'Wie viele Minuten Nachspielzeit gibt es insgesamt? Danach mit ▶ weiterspielen.'
+      : 'Nachspielzeit in Minuten. Ist sie abgelaufen, endet die Halbzeit automatisch und das Handy vibriert.',
     html: [1, 2].map(h => `<div class="form-row nz-row"><span>${h}. Halbzeit</span>
       <div class="stepper" data-h="${h}"><button type="button" data-d="-1">−</button><span class="val">${val[h]}</span><button type="button" data-d="1">+</button></div></div>`).join(''),
     init(el) {
@@ -305,10 +362,11 @@ async function stoppageDialog() {
       { label: 'Übernehmen', value: true, cls: 'primary' },
     ],
   });
-  if (!ok || !liveGame) return;
+  if (!ok || !liveGame) return false;
   liveGame.stoppage = val;
   drawClock();
   saveLive();
+  return true;
 }
 
 // ---------- Wechsel und Positionstausch ----------
@@ -333,6 +391,7 @@ function undoAction(snap, msg) {
 async function onLiveDrop(src, dst) {
   const g = liveGame;
   if (!g || dst.type !== 'slot') return; // auf die Bank ziehen geht im Spiel nicht
+  if (g.clock.phase === 'end') { toast('Das Spiel ist schon beendet.'); return; }
   const snap = { slots: [...g.slots], lineup: [...g.lineup], events: [...g.events] };
 
   if (src.type === 'slot') {
@@ -388,7 +447,9 @@ function showLog() {
   }).join('');
   const sh = sheet('Protokoll', `
     ${evs.length ? `<ul class="log">${rows}</ul>` : '<p class="hint">Noch keine Ereignisse.</p>'}
+    <button class="btn wide" id="to-report">📄 Bericht (Zwischenstand)</button>
     <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
+  sh.el.querySelector('#to-report').addEventListener('click', () => { sh.close(); go('bericht/' + g.id); });
   sh.el.querySelector('#discard').addEventListener('click', async () => {
     sh.close();
     const ok = await dialog({

@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-7
-const APP_VERSION = '4 (Etappe 4+5: Spielansicht, Wechsel, Uhr)';
+// Markierung für die Offline-Prüfung in sw.js: build-8
+const APP_VERSION = '4.1 (Spielende automatisch, Spielbericht)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -141,7 +141,10 @@ pages.start = {
     const n = players.length;
     return `
       <div class="menu">
-        ${game ? `<button class="menu-btn live" data-go="live">
+        ${game && game.clock && game.clock.phase === 'end' ? `<button class="menu-btn live" data-go="bericht/${game.id}">
+            <span class="sym">📄</span>
+            <span>Spiel beendet – Bericht<small>${esc(game.team)} – ${esc(game.opponent)}</small></span>
+          </button>` : game ? `<button class="menu-btn live" data-go="live">
             <span class="sym">▶️</span>
             <span>Laufendes Spiel<small>${esc(game.team)} – ${esc(game.opponent)}</small></span>
           </button>` : ''}
@@ -221,6 +224,7 @@ async function show() {
   // Vorige Seite aufräumen (z. B. Uhr-Anzeige der Spielansicht stoppen)
   if (activePage && activePage.leave) activePage.leave();
   activePage = page;
+  document.querySelectorAll('.sheet-wrap').forEach(el => el.remove());
   document.body.classList.toggle('live-mode', !!page.fullscreen);
   titleEl.textContent = page.title;
   backBtn.hidden = page === pages.start;

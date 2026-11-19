@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-7 */
+/* Markierung für die Offline-Prüfung in sw.js: build-8 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -545,6 +545,45 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 
 .dlg-body { margin-bottom: 16px; }
 .nz-row { margin-bottom: 10px; }
+
+.phase-btn.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.7); margin-left: 6px; }
+
+/* ---------- Spielbericht ---------- */
+
+.rep-head {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--gruen);
+  color: #fff;
+  text-align: center;
+}
+.rep-title { font-size: 17px; font-weight: 600; }
+.rep-score { margin: 4px 0; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rep-sub { font-size: 14px; color: rgba(255,255,255,.85); }
+.rep-actions { display: flex; gap: 8px; margin: 12px 0 4px; }
+.rep-actions .btn { flex: 1; padding: 10px 6px; font-size: 15px; }
+.rep-box {
+  padding: 10px 14px;
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  background: var(--karte);
+}
+.rep-line { padding: 4px 0; line-height: 1.4; }
+.rep-line b { display: inline-block; min-width: 96px; color: var(--text-leise); font-weight: 600; }
+.rep-ev { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid #eef1ee; line-height: 1.35; }
+.rep-ev:last-child { border-bottom: 0; }
+.rep-ev.goal { font-weight: 700; color: var(--gruen); }
+.rep-ev.opp { color: #b71c1c; }
+.rep-div {
+  margin: 6px 0;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: #e8efe8;
+  color: var(--text-leise);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
 
 /* ---------- Fenster von unten ---------- */
 

@@ -1,6 +1,6 @@
 'use strict';
 // Spiel anlegen in drei Schritten: Spieldaten → Wer ist dabei? → Startaufstellung
-// Markierung für die Offline-Prüfung in sw.js: build-7
+// Markierung für die Offline-Prüfung in sw.js: build-8
 
 // Der Entwurf wird nach jeder Änderung gespeichert, damit nichts verloren geht,
 // falls das Handy zwischendurch gesperrt wird.
@@ -29,7 +29,12 @@ async function freshDraft() {
 // Knopf "Neues Spiel" auf der Startseite
 async function startNewGame() {
   const game = await currentGame();
-  if (game) {
+  if (game && game.clock && game.clock.phase === 'end') {
+    // Beendetes Spiel bleibt gespeichert (fürs Archiv), es ist nur nicht mehr "laufend"
+    game.status = 'done';
+    await DB.put('games', game);
+    await delMeta('current');
+  } else if (game) {
     const ok = await dialog({
       title: 'Es läuft noch ein Spiel',
       text: `${game.team} – ${game.opponent} wird dabei gelöscht.`,
