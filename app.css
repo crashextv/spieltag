@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-5 */
+/* Markierung für die Offline-Prüfung in sw.js: build-6 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -400,6 +400,24 @@ main.busy { pointer-events: none; }
 .bench-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .bench-av { width: 52px; height: 52px; font-size: 17px; }
 .bench-item .slot-label { background: #e3e8e3; }
+
+/* ---------- Ziehen und Ablegen ---------- */
+
+[data-drag] { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.dragging { opacity: .3; }
+.drag-ghost {
+  position: fixed;
+  z-index: 60;
+  width: 64px !important;
+  height: 64px !important;
+  transform: translate(-50%, -50%) scale(1.15);
+  pointer-events: none;
+  opacity: .92;
+  box-shadow: 0 8px 20px rgba(0,0,0,.45) !important;
+}
+.slot.drop-hover .avatar { outline: 4px solid var(--akzent); outline-offset: 2px; }
+.bench-strip.drop-hover { outline: 3px dashed var(--akzent); outline-offset: 4px; border-radius: 12px; }
+.bench-strip { min-height: 76px; padding: 4px; }
 
 /* ---------- Fenster von unten ---------- */
 

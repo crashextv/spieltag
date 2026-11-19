@@ -1,6 +1,6 @@
 'use strict';
 // Spiel anlegen in drei Schritten: Spieldaten → Wer ist dabei? → Startaufstellung
-// Markierung für die Offline-Prüfung in sw.js: build-5
+// Markierung für die Offline-Prüfung in sw.js: build-6
 
 // Der Entwurf wird nach jeder Änderung gespeichert, damit nichts verloren geht,
 // falls das Handy zwischendurch gesperrt wird.
@@ -238,10 +238,13 @@ pages.aufstellung = {
     const d = await loadDraft();
     if (!d || !d.squad) return noDraft();
     return `${stepsBar(3)}
-      <p class="hint">Tippen Sie auf einen Platz und wählen Sie den Spieler.</p>
-      <div id="setup-pitch"></div>
-      <h3 class="sub">Bank</h3>
-      <div id="setup-bench" class="bench-strip"></div>
+      <p class="hint">Spieler von der Bank auf einen Platz <b>ziehen</b> – oder einen Platz antippen.
+        Spieler auf dem Feld lassen sich untereinander tauschen oder zurück auf die Bank ziehen.</p>
+      <div id="setup-area">
+        <div id="setup-pitch"></div>
+        <h3 class="sub">Bank</h3>
+        <div id="setup-bench" class="bench-strip" data-drop="bench"></div>
+      </div>
       <button class="btn wide" id="auto">Freie Plätze automatisch füllen</button>
       <p class="error" id="f-err" hidden></p>
       <button class="btn primary wide" id="create">Spiel anlegen</button>`;
@@ -255,17 +258,13 @@ pages.aufstellung = {
     while (d.slots.length < layout.length) d.slots.push(null);
     d.slots.length = layout.length;
 
-    const posOf = id => {
-      const i = d.slots.indexOf(id);
-      return i < 0 ? 'Bank' : ROLE_NAMES[layout[i].role];
-    };
     const bench = () => sortPlayers(d.squad.filter(id => !d.slots.includes(id)).map(id => players[id]));
 
     const refresh = () => {
       document.getElementById('setup-pitch').innerHTML = renderPitch(d.formation, d.slots, players);
       const b = bench();
       document.getElementById('setup-bench').innerHTML = b.length
-        ? b.map(p => `<div class="bench-item">${avatar(p, 'bench-av', initials(p.name))}<span class="slot-label">${esc(p.number)}</span></div>`).join('')
+        ? b.map(p => `<div class="bench-item" data-drag="bench:${p.id}">${avatar(p, 'bench-av', initials(p.name))}<span class="slot-label">${esc(p.number)}</span></div>`).join('')
         : '<span class="hint">Niemand auf der Bank</span>';
       document.getElementById('auto').hidden = !d.slots.includes(null) || !b.length;
       view.querySelectorAll('#setup-pitch .slot').forEach(s =>
@@ -273,25 +272,34 @@ pages.aufstellung = {
       saveDraft();
     };
 
-    // Auswahlfenster für einen Platz
+    // Ziehen: Bank → Platz, Platz ↔ Platz, Platz → Bank
+    makeDraggable(document.getElementById('setup-area'), (src, dst) => {
+      if (src.type === 'bench' && dst.type === 'slot') {
+        d.slots[dst.i] = src.id; // bisheriger Spieler auf dem Platz geht automatisch auf die Bank
+      } else if (src.type === 'slot' && dst.type === 'slot') {
+        [d.slots[src.i], d.slots[dst.i]] = [d.slots[dst.i], d.slots[src.i]];
+      } else if (src.type === 'slot' && dst.type === 'bench') {
+        d.slots[src.i] = null;
+      }
+      refresh();
+    });
+
+    // Auswahlfenster für einen Platz: nur Spieler, die noch auf der Bank sitzen
     const choose = idx => {
       const current = d.slots[idx];
-      const list = sortPlayers(d.squad.map(id => players[id]));
+      const list = bench();
       const sh = sheet(`${ROLE_NAMES[layout[idx].role]}: Spieler wählen`, `
-        <ul class="list">${list.map(p => `
-          <li><button class="row ${p.id === current ? 'on' : ''}" data-id="${p.id}">
+        ${list.length ? `<ul class="list">${list.map(p => `
+          <li><button class="row" data-id="${p.id}">
             ${avatar(p)}
             <span class="num">${esc(p.number)}</span>
             <span class="name">${esc(p.name)}</span>
-            <span class="where">${p.id === current ? 'hier' : posOf(p.id)}</span>
           </button></li>`).join('')}
-        </ul>
+        </ul>` : `<p class="hint">Alle Spieler stehen schon auf dem Feld. Zum Tauschen einen Spieler
+          auf dem Feld auf einen anderen ziehen.</p>`}
         ${current ? '<button class="btn wide" id="clear-slot">Platz leeren (auf die Bank)</button>' : ''}`);
       sh.el.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => {
-        const id = b.dataset.id;
-        const from = d.slots.indexOf(id);
-        if (from >= 0) d.slots[from] = current || null; // Plätze tauschen
-        d.slots[idx] = id;
+        d.slots[idx] = b.dataset.id; // bisheriger Spieler geht auf die Bank
         sh.close();
         refresh();
       }));

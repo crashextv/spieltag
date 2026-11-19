@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-5
-const APP_VERSION = '3 (Etappe 3: Spiel anlegen)';
+// Markierung für die Offline-Prüfung in sw.js: build-6
+const APP_VERSION = '3.1 (Etappe 3: Spiel anlegen, mit Ziehen)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');

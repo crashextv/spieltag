@@ -1,6 +1,6 @@
 'use strict';
 // Spielfeld: unsere Hälfte mit festen Plätzen gemäß Formation
-// Markierung für die Offline-Prüfung in sw.js: build-5
+// Markierung für die Offline-Prüfung in sw.js: build-6
 //
 // Platz 0 ist immer der Torwart, danach Abwehr (links → rechts),
 // Mittelfeld und Sturm.
@@ -34,10 +34,75 @@ function renderPitch(formation, slots, players, cls = '') {
     <div class="pl-goal"></div>
     ${layout.map((s, i) => {
       const p = players[slots[i]];
-      return `<button class="slot" data-slot="${i}" style="left:${s.x}%;top:${s.y}%">
+      return `<button class="slot" data-slot="${i}" data-drop="slot:${i}" ${p ? `data-drag="slot:${i}"` : ''}
+          style="left:${s.x}%;top:${s.y}%">
         ${p ? avatar(p, 'pitch-av', initials(p.name)) : `<span class="avatar pitch-av empty-av">+</span>`}
         <span class="slot-label ${p ? '' : 'role'}">${p ? esc(p.number) : s.role}</span>
       </button>`;
     }).join('')}
   </div>`;
+}
+
+// ---------- Ziehen und Ablegen ----------
+// Elemente mit data-drag="slot:3" oder data-drag="bench:<id>" lassen sich ziehen,
+// Elemente mit data-drop="slot:3" oder data-drop="bench" nehmen sie auf.
+// Ein kurzer Tipp (ohne Bewegung) bleibt ein normaler Tipp.
+function parseDnd(s) {
+  const [type, v] = String(s).split(':');
+  return type === 'slot' ? { type, i: +v } : { type, id: v };
+}
+
+function makeDraggable(container, onDrop) {
+  let st = null;
+  let suppressClick = false;
+
+  container.addEventListener('pointerdown', e => {
+    const el = e.target.closest('[data-drag]');
+    if (!el || !container.contains(el) || e.button > 0) return;
+    st = { el, src: parseDnd(el.dataset.drag), x: e.clientX, y: e.clientY, pid: e.pointerId, ghost: null, over: null };
+  });
+
+  container.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.pid) return;
+    if (!st.ghost) {
+      if (Math.hypot(e.clientX - st.x, e.clientY - st.y) < 8) return; // noch ein Tipp
+      const av = st.el.querySelector('.avatar') || st.el;
+      st.ghost = av.cloneNode(true);
+      st.ghost.classList.add('drag-ghost');
+      document.body.appendChild(st.ghost);
+      st.el.classList.add('dragging');
+      try { st.el.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    e.preventDefault();
+    st.ghost.style.left = e.clientX + 'px';
+    st.ghost.style.top = e.clientY + 'px';
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const tgt = under && under.closest('[data-drop]');
+    const over = tgt && container.contains(tgt) && tgt !== st.el ? tgt : null;
+    if (over !== st.over) {
+      if (st.over) st.over.classList.remove('drop-hover');
+      if (over) over.classList.add('drop-hover');
+      st.over = over;
+    }
+  });
+
+  const end = e => {
+    if (!st || e.pointerId !== st.pid) return;
+    const s = st;
+    st = null;
+    if (!s.ghost) return; // war nur ein Tipp
+    s.ghost.remove();
+    s.el.classList.remove('dragging');
+    if (s.over) s.over.classList.remove('drop-hover');
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 300);
+    if (e.type === 'pointerup' && s.over) onDrop(s.src, parseDnd(s.over.dataset.drop));
+  };
+  container.addEventListener('pointerup', end);
+  container.addEventListener('pointercancel', end);
+
+  // Nach dem Ziehen keinen zusätzlichen "Tipp" auslösen
+  container.addEventListener('click', e => {
+    if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+  }, true);
 }
