@@ -2,15 +2,15 @@
 // Service Worker: speichert alle App-Dateien auf dem Handy,
 // damit die App auch ohne Internet startet.
 //
-// Bei jeder neuen Version BUILD erhöhen – und in index.html, app.js,
-// app.css und db.js die Markierung "build-N" auf dieselbe Zahl setzen.
-const BUILD = 4;
+// Bei jeder neuen Version BUILD erhöhen – und in allen Dateien der Liste
+// CHECKED die Markierung "build-N" auf dieselbe Zahl setzen.
+const BUILD = 5;
 const CACHE = 'spieltag-v' + BUILD;
 const MARK = 'build-' + BUILD;
 
 // Diese Dateien müssen die Markierung enthalten. So merken wir, wenn der
 // Server noch alte Dateien liefert (GitHub braucht manchmal ein paar Minuten).
-const CHECKED = ['./index.html', './app.js', './app.css', './db.js'];
+const CHECKED = ['./index.html', './app.css', './db.js', './app.js', './kader.js', './pitch.js', './spiel.js'];
 const OTHER = [
   './manifest.webmanifest',
   './icons/icon-192.png',

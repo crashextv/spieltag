@@ -1,12 +1,15 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-4
-const APP_VERSION = '2 (Etappe 2: Kader)';
+// Markierung für die Offline-Prüfung in sw.js: build-5
+const APP_VERSION = '3 (Etappe 3: Spiel anlegen)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
 const backBtn = document.getElementById('btn-back');
+
+// Alle Seiten der App. Weitere Seiten tragen sich in kader.js, spiel.js usw. ein.
+const pages = {};
 
 // ---------- Hilfsfunktionen ----------
 
@@ -15,41 +18,53 @@ function esc(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// Rundes Spielerbild; ohne Foto ein grüner Kreis mit der Rückennummer
-function avatar(p, cls = '') {
+function initials(name) {
+  const parts = String(name || '').trim().split(/\s+/);
+  return ((parts[0] || '')[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '');
+}
+
+// Rundes Spielerbild; ohne Foto ein grüner Kreis mit Rückennummer (oder Initialen)
+function avatar(p, cls = '', inner) {
   return p.photo
     ? `<img class="avatar ${cls}" src="${p.photo}" alt="">`
-    : `<span class="avatar ph ${cls}">${esc(p.number)}</span>`;
+    : `<span class="avatar ph ${cls}">${esc(inner !== undefined ? inner : p.number)}</span>`;
 }
 
 function sortPlayers(list) {
   return list.sort((a, b) => a.number - b.number || a.name.localeCompare(b.name, 'de'));
 }
 
+function byId(list) {
+  const map = {};
+  for (const p of list) map[p.id] = p;
+  return map;
+}
+
 function newId() {
   return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 }
 
-// Foto auf ein Quadrat zuschneiden und verkleinern (spart Speicher)
-async function loadPhoto(file) {
-  const SIZE = 320;
-  let img;
-  try {
-    img = await createImageBitmap(file);
-  } catch (e) {
-    img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = URL.createObjectURL(file);
-    });
-  }
-  const w = img.width, h = img.height, s = Math.min(w, h);
-  const c = document.createElement('canvas');
-  c.width = c.height = SIZE;
-  c.getContext('2d').drawImage(img, (w - s) / 2, (h - s) / 2, s, s, 0, 0, SIZE, SIZE);
-  if (img.close) img.close();
-  return c.toDataURL('image/jpeg', 0.82);
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function fmtDate(s) {
+  const [y, m, d] = String(s || '').split('-');
+  return d ? `${d}.${m}.${y}` : '';
+}
+
+async function getMeta(key) {
+  const row = await DB.get('meta', key);
+  return row ? row.value : undefined;
+}
+function setMeta(key, value) { return DB.put('meta', { id: key, value }); }
+function delMeta(key) { return DB.del('meta', key); }
+
+// Das laufende Spiel (falls es eins gibt)
+async function currentGame() {
+  const id = await getMeta('current');
+  return id ? DB.get('games', id) : undefined;
 }
 
 // Dialog mit Knöpfen; liefert den Wert des gedrückten Knopfs
@@ -73,6 +88,18 @@ function dialog({ title, text, buttons }) {
   });
 }
 
+// Fenster, das von unten hochfährt
+function sheet(title, html) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sheet-wrap';
+  wrap.innerHTML = `<div class="sheet"><div class="grip"></div>
+    ${title ? `<h2>${esc(title)}</h2>` : ''}<div class="sheet-body">${html}</div></div>`;
+  const close = () => wrap.remove();
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  document.body.appendChild(wrap);
+  return { el: wrap.querySelector('.sheet-body'), close };
+}
+
 // Kurze Meldung unten (später auch mit "Rückgängig")
 let toastTimer;
 function toast(msg, ms = 2500) {
@@ -89,156 +116,43 @@ function toast(msg, ms = 2500) {
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
-// ---------- Seiten ----------
+// ---------- Startseite und Platzhalter ----------
 
-const pages = {
-  start: {
-    title: 'Spieltag',
-    async render() {
-      const n = (await DB.all('players')).length;
-      return `
-        <div class="menu">
-          ${menuBtn('kader', '👕', 'Kader', n ? `${n} Spieler` : 'Spieler anlegen und ändern')}
-          ${menuBtn('spiel', '⚽', 'Neues Spiel', 'Aufstellung und los geht’s')}
-          ${menuBtn('archiv', '📋', 'Archiv', 'Beendete Spiele und Torschützen')}
-          ${menuBtn('sicherung', '💾', 'Sicherung', 'Daten sichern und wiederherstellen')}
-        </div>
-        <div class="status" id="status">Prüfe …</div>`;
-    },
-    after() {
-      view.querySelectorAll('[data-go]').forEach(b =>
-        b.addEventListener('click', () => go(b.dataset.go)));
-      updateStatus();
-    }
+pages.start = {
+  title: 'Spieltag',
+  async render() {
+    const [players, game, draft] = await Promise.all([DB.all('players'), currentGame(), getMeta('draft')]);
+    const n = players.length;
+    return `
+      <div class="menu">
+        ${game ? `<button class="menu-btn live" data-go="live">
+            <span class="sym">▶️</span>
+            <span>Laufendes Spiel<small>${esc(game.team)} – ${esc(game.opponent)}</small></span>
+          </button>` : ''}
+        ${!game && draft ? `<button class="menu-btn live" data-go="spiel">
+            <span class="sym">📝</span>
+            <span>Spiel weiter vorbereiten<small>${esc(draft.team || '…')} – ${esc(draft.opponent || '…')}</small></span>
+          </button>` : ''}
+        ${menuBtn('kader', '👕', 'Kader', n ? `${n} Spieler` : 'Spieler anlegen und ändern')}
+        <button class="menu-btn" id="new-game">
+          <span class="sym">⚽</span>
+          <span>Neues Spiel<small>Aufstellung und los geht’s</small></span>
+        </button>
+        ${menuBtn('archiv', '📋', 'Archiv', 'Beendete Spiele und Torschützen')}
+        ${menuBtn('sicherung', '💾', 'Sicherung', 'Daten sichern und wiederherstellen')}
+      </div>
+      <div class="status" id="status">Prüfe …</div>`;
   },
-
-  kader: {
-    title: 'Kader',
-    async render() {
-      const players = sortPlayers(await DB.all('players'));
-      const list = players.length
-        ? `<p class="hint">${players.length} Spieler · zum Ändern antippen</p>
-           <ul class="list">${players.map(p => `
-             <li><button class="row" data-id="${p.id}">
-               ${avatar(p)}
-               <span class="num">${esc(p.number)}</span>
-               <span class="name">${esc(p.name)}</span>
-               <span class="chev">›</span>
-             </button></li>`).join('')}
-           </ul>`
-        : `<div class="placeholder"><div class="sym">👕</div>
-             <p>Noch keine Spieler im Kader.<br>Tippen Sie unten auf <b>+ Spieler</b>.</p></div>`;
-      return list + `<div class="fab-space"></div><button class="fab" id="add">+ Spieler</button>`;
-    },
-    after() {
-      view.querySelectorAll('[data-id]').forEach(b =>
-        b.addEventListener('click', () => go('spieler/' + b.dataset.id)));
-      document.getElementById('add').addEventListener('click', () => go('spieler/neu'));
-    }
-  },
-
-  spieler: {
-    title: 'Spieler',
-    async render(id) {
-      const isNew = id === 'neu';
-      const p = isNew ? { id: newId(), name: '', number: '', photo: null } : await DB.get('players', id);
-      if (!p) return `<div class="placeholder"><p>Spieler nicht gefunden.</p></div>`;
-      this.player = { ...p };
-      this.isNew = isNew;
-      titleEl.textContent = isNew ? 'Neuer Spieler' : 'Spieler ändern';
-      return `
-        <div class="photo-area">
-          <div id="photo-preview">${avatar(p, 'big')}</div>
-          <div class="photo-btns">
-            <label class="btn">📷 Foto wählen
-              <input type="file" id="photo-input" accept="image/*" hidden>
-            </label>
-            <button class="btn ghost" id="photo-del" ${p.photo ? '' : 'hidden'}>Foto entfernen</button>
-          </div>
-        </div>
-        <label class="field">Name
-          <input id="f-name" type="text" autocomplete="off" autocapitalize="words" maxlength="30" value="${esc(p.name)}">
-        </label>
-        <label class="field">Rückennummer
-          <input id="f-num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${esc(p.number)}">
-        </label>
-        <p class="error" id="f-err" hidden></p>
-        <button class="btn primary wide" id="save">Speichern</button>
-        ${isNew ? '' : '<button class="btn danger wide" id="delete">Spieler löschen</button>'}`;
-    },
-    after() {
-      const page = this;
-      const p = page.player;
-      if (!p) return;
-      const saved = { name: p.name, number: p.number };
-      const preview = document.getElementById('photo-preview');
-      const delBtn = document.getElementById('photo-del');
-      const nameIn = document.getElementById('f-name');
-      const numIn = document.getElementById('f-num');
-      const err = document.getElementById('f-err');
-
-      const refreshPreview = () => {
-        p.number = numIn.value.trim();
-        preview.innerHTML = avatar(p, 'big');
-        delBtn.hidden = !p.photo;
-      };
-      numIn.addEventListener('input', () => {
-        numIn.value = numIn.value.replace(/\D/g, '');
-        if (!p.photo) refreshPreview();
-      });
-
-      document.getElementById('photo-input').addEventListener('change', async e => {
-        const file = e.target.files[0];
-        e.target.value = '';
-        if (!file) return;
-        try {
-          p.photo = await loadPhoto(file);
-          refreshPreview();
-        } catch (ex) {
-          toast('Dieses Bild kann leider nicht gelesen werden.');
-        }
-      });
-      delBtn.addEventListener('click', () => { p.photo = null; refreshPreview(); });
-
-      if (page.isNew) nameIn.focus();
-
-      document.getElementById('save').addEventListener('click', async () => {
-        const name = nameIn.value.trim().replace(/\s+/g, ' ');
-        const num = parseInt(numIn.value, 10);
-        const fail = msg => { err.textContent = msg; err.hidden = false; };
-        if (!name) return fail('Bitte einen Namen eingeben.');
-        if (!(num >= 1 && num <= 99)) return fail('Bitte eine Rückennummer von 1 bis 99 eingeben.');
-        const all = await DB.all('players');
-        const clash = all.find(o => o.id !== p.id && o.number === num);
-        if (clash) return fail(`Die Nummer ${num} hat schon ${clash.name}.`);
-        await DB.put('players', { id: p.id, name, number: num, photo: p.photo || null });
-        askPersist();
-        toast(page.isNew ? `${name} angelegt` : 'Gespeichert');
-        goBack('kader');
-      });
-
-      const delete_ = document.getElementById('delete');
-      if (delete_) delete_.addEventListener('click', async () => {
-        const ok = await dialog({
-          title: 'Spieler löschen?',
-          text: `${saved.name} (Nr. ${saved.number}) wird aus dem Kader entfernt.`,
-          buttons: [
-            { label: 'Abbrechen', value: false, cls: 'ghost' },
-            { label: 'Löschen', value: true, cls: 'danger' },
-          ],
-        });
-        if (!ok) return;
-        await DB.del('players', p.id);
-        toast(`${saved.name} gelöscht`);
-        goBack('kader');
-      });
-    }
-  },
-
-  spiel:     placeholder('Neues Spiel', '⚽', 3),
-  archiv:    placeholder('Archiv', '📋', 8),
-  sicherung: placeholder('Sicherung', '💾', 8),
+  after() {
+    view.querySelectorAll('[data-go]').forEach(b =>
+      b.addEventListener('click', () => go(b.dataset.go)));
+    document.getElementById('new-game').addEventListener('click', startNewGame);
+    updateStatus();
+  }
 };
+
+pages.archiv = placeholder('Archiv', '📋', 8);
+pages.sicherung = placeholder('Sicherung', '💾', 8);
 
 function menuBtn(page, sym, label, hint) {
   return `<button class="menu-btn" data-go="${page}">
@@ -272,6 +186,16 @@ function goBack(fallback) {
   else { history.replaceState({ d: 0 }, '', fallback ? '#' + fallback : location.pathname); show(); }
 }
 
+// Alle Seiten "zurückspulen" bis zum Start und dann (optional) eine neue öffnen.
+// So landet die Zurück-Taste nicht wieder mitten im Formular.
+let pendingRoute = null;
+function resetTo(route) {
+  const d = depth();
+  if (d > 0) { pendingRoute = route || ''; history.go(-d); }
+  else if (route) go(route);
+  else show();
+}
+
 let renderToken = 0;
 async function show() {
   const [name, param] = location.hash.slice(1).split('/');
@@ -285,11 +209,18 @@ async function show() {
   view.classList.remove('busy');
   view.innerHTML = html;
   view.scrollTop = 0;
-  if (page.after) page.after();
+  if (page.after) page.after(param);
 }
 
 backBtn.addEventListener('click', () => goBack(''));
-window.addEventListener('popstate', show);
+window.addEventListener('popstate', () => {
+  if (pendingRoute !== null) {
+    const r = pendingRoute;
+    pendingRoute = null;
+    if (r) { go(r); return; }
+  }
+  show();
+});
 if (!history.state) history.replaceState({ d: 0 }, '', location.href);
 
 // ---------- Statusanzeige ----------
@@ -369,4 +300,5 @@ function showUpdateBanner(worker) {
 }
 
 askPersist();
-show();
+// Erst starten, wenn alle Seiten-Dateien geladen sind
+document.addEventListener('DOMContentLoaded', show);
