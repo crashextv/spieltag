@@ -1,15 +1,17 @@
 'use strict';
 // Service Worker: speichert alle App-Dateien auf dem Handy,
 // damit die App auch ohne Internet startet.
-// Bei jeder neuen Version die Nummer erhöhen!
-const CACHE = 'spieltag-v3';
+//
+// Bei jeder neuen Version BUILD erhöhen – und in index.html, app.js,
+// app.css und db.js die Markierung "build-N" auf dieselbe Zahl setzen.
+const BUILD = 4;
+const CACHE = 'spieltag-v' + BUILD;
+const MARK = 'build-' + BUILD;
 
-const FILES = [
-  './',
-  './index.html',
-  './app.css',
-  './db.js',
-  './app.js',
+// Diese Dateien müssen die Markierung enthalten. So merken wir, wenn der
+// Server noch alte Dateien liefert (GitHub braucht manchmal ein paar Minuten).
+const CHECKED = ['./index.html', './app.js', './app.css', './db.js'];
+const OTHER = [
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -17,7 +19,24 @@ const FILES = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    for (const url of CHECKED) {
+      // cache: 'reload' = am Zwischenspeicher des Browsers vorbei, frisch vom Server
+      const res = await fetch(url, { cache: 'reload' });
+      if (!res.ok) throw new Error(url + ' fehlt');
+      const text = await res.text();
+      if (!text.includes(MARK)) {
+        // Alte Datei erwischt -> Installation abbrechen, der Browser versucht es später erneut
+        await caches.delete(CACHE);
+        throw new Error(url + ' ist noch nicht ' + MARK);
+      }
+      const init = { headers: { 'Content-Type': res.headers.get('Content-Type') || 'text/plain' } };
+      await cache.put(url, new Response(text, init));
+      if (url === './index.html') await cache.put('./', new Response(text, init));
+    }
+    await cache.addAll(OTHER.map(u => new Request(u, { cache: 'reload' })));
+  })());
   // Beim allerersten Installieren sofort aktiv werden
   if (!self.registration.active) self.skipWaiting();
 });
@@ -38,8 +57,9 @@ self.addEventListener('message', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true })
+    caches.open(CACHE)
+      .then(c => c.match(event.request, { ignoreSearch: true }))
       .then(hit => hit || fetch(event.request))
-      .catch(() => caches.match('./index.html'))
+      .catch(() => caches.open(CACHE).then(c => c.match('./index.html')))
   );
 });

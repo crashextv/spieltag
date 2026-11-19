@@ -1,6 +1,7 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
+// Markierung für die Offline-Prüfung in sw.js: build-4
 const APP_VERSION = '2 (Etappe 2: Kader)';
 
 const view = document.getElementById('view');
@@ -339,6 +340,10 @@ if ('serviceWorker' in navigator) {
       });
     });
     if (reg.waiting && hadVersion) showUpdateBanner(reg.waiting);
+    // Beim Zurückkehren in die App nach einer neuen Version schauen (nur mit Internet)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) reg.update().catch(() => {});
+    });
   });
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
