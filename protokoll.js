@@ -1,7 +1,7 @@
 'use strict';
 // Protokoll bearbeiten: Einträge ändern, löschen und von Hand nachtragen.
 // Funktioniert für das laufende und für beendete Spiele.
-// Markierung für die Offline-Prüfung in sw.js: build-12
+// Markierung für die Offline-Prüfung in sw.js: build-13
 
 const EV_NAMES = { goal: 'Tor', oppGoal: 'Gegentor', ownGoalOpp: 'Eigentor des Gegners', sub: 'Wechsel' };
 

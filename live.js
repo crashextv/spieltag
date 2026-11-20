@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-12
+// Markierung für die Offline-Prüfung in sw.js: build-13
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)

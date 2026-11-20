@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-12
-const APP_VERSION = '7 (Etappe 7: Protokoll bearbeiten und nachtragen)';
+// Markierung für die Offline-Prüfung in sw.js: build-13
+const APP_VERSION = '8 (Etappe 8: Archiv und Sicherung)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -143,8 +143,10 @@ function hideToast() {
 pages.start = {
   title: 'Spieltag',
   async render() {
-    const [players, game, draft] = await Promise.all([DB.all('players'), currentGame(), getMeta('draft')]);
+    const [players, game, draft, games, lastBackup] = await Promise.all([
+      DB.all('players'), currentGame(), getMeta('draft'), DB.all('games'), getMeta('lastBackup')]);
     const n = players.length;
+    const ended = games.filter(g => g.clock && g.clock.phase === 'end').length;
     return `
       <div class="menu">
         ${game && game.clock && game.clock.phase === 'end' ? `<button class="menu-btn live" data-go="bericht/${game.id}">
@@ -163,8 +165,8 @@ pages.start = {
           <span class="sym">⚽</span>
           <span>Neues Spiel<small>Aufstellung und los geht’s</small></span>
         </button>
-        ${menuBtn('archiv', '📋', 'Archiv', 'Beendete Spiele und Torschützen')}
-        ${menuBtn('sicherung', '💾', 'Sicherung', 'Daten sichern und wiederherstellen')}
+        ${menuBtn('archiv', '📋', 'Archiv', ended ? `${ended} ${ended === 1 ? 'Spiel' : 'Spiele'} · Torschützenliste` : 'Beendete Spiele und Torschützen')}
+        ${menuBtn('sicherung', '💾', 'Sicherung', backupAgeText(lastBackup))}
       </div>
       <div class="status" id="status">Prüfe …</div>`;
   },
@@ -176,8 +178,6 @@ pages.start = {
   }
 };
 
-pages.archiv = placeholder('Archiv', '📋', 8);
-pages.sicherung = placeholder('Sicherung', '💾', 8);
 
 function menuBtn(page, sym, label, hint) {
   return `<button class="menu-btn" data-go="${page}">

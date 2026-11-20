@@ -4,13 +4,13 @@
 //
 // Bei jeder neuen Version BUILD erhöhen – und in allen Dateien der Liste
 // CHECKED die Markierung "build-N" auf dieselbe Zahl setzen.
-const BUILD = 12;
+const BUILD = 13;
 const CACHE = 'spieltag-v' + BUILD;
 const MARK = 'build-' + BUILD;
 
 // Diese Dateien müssen die Markierung enthalten. So merken wir, wenn der
 // Server noch alte Dateien liefert (GitHub braucht manchmal ein paar Minuten).
-const CHECKED = ['./index.html', './app.css', './db.js', './app.js', './kader.js', './pitch.js', './spiel.js', './live.js', './bericht.js', './protokoll.js'];
+const CHECKED = ['./index.html', './app.css', './db.js', './app.js', './kader.js', './pitch.js', './spiel.js', './live.js', './bericht.js', './protokoll.js', './archiv.js'];
 const OTHER = [
   './manifest.webmanifest',
   './icons/icon-192.png',

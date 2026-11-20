@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-12 */
+/* Markierung für die Offline-Prüfung in sw.js: build-13 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -630,6 +630,48 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
   font-size: 18px;
 }
 #rep-edit { margin-top: 0; }
+
+/* ---------- Archiv ---------- */
+
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; padding: 4px; border-radius: 12px; background: #e3e8e3; }
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-leise);
+  font-size: 16px;
+  font-weight: 600;
+}
+.tab.on { background: var(--karte); color: var(--gruen); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.game-row { gap: 8px; padding: 12px 10px 12px 12px; font-size: 16px; }
+.game-row .name { min-width: 0; }
+.game-row .g-date, .game-row .g-score, .game-row .chev { flex-shrink: 0; }
+.g-date { color: var(--text-leise); font-size: 14px; font-variant-numeric: tabular-nums; }
+.g-score {
+  min-width: 52px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.g-score.win { background: var(--gruen-hell); }
+.g-score.draw { background: #78909c; }
+.g-score.loss { background: #c62828; }
+.scorers { padding: 4px 14px; }
+.sc-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #eef1ee; }
+.sc-row:last-child { border-bottom: 0; }
+.sc-row span:first-child { flex: 1; }
+.sc-row.zero { color: var(--text-leise); }
+.sc-head { color: var(--text-leise); font-size: 13px; font-weight: 700; }
+.sc-num { width: 48px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sc-head .sc-num, .sc-head span { font-weight: 700; }
+.sc-head span:not(:first-child) { width: 48px; text-align: center; }
+.sc-rank { display: inline-block; min-width: 24px; color: var(--gruen); }
+#rep-delete { margin-top: 24px; }
 
 /* ---------- Spielbericht ---------- */
 

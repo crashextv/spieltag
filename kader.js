@@ -1,6 +1,6 @@
 'use strict';
 // Kader: Spieler anlegen, ändern, löschen
-// Markierung für die Offline-Prüfung in sw.js: build-12
+// Markierung für die Offline-Prüfung in sw.js: build-13
 
 // Foto auf ein Quadrat zuschneiden und verkleinern (spart Speicher)
 async function loadPhoto(file) {

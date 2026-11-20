@@ -1,7 +1,7 @@
 'use strict';
 // Datenspeicher auf dem Gerät (IndexedDB). Nichts verlässt das Handy.
 // Bereiche: players (Kader), games (Spiele), meta (Einstellungen)
-// Markierung für die Offline-Prüfung in sw.js: build-12
+// Markierung für die Offline-Prüfung in sw.js: build-13
 const DB = (() => {
   let dbPromise;
 
@@ -37,5 +37,8 @@ const DB = (() => {
     get: (store, id) => run(store, 'readonly', s => s.get(id)),
     put: (store, obj) => run(store, 'readwrite', s => s.put(obj)),
     del: (store, id) => run(store, 'readwrite', s => s.delete(id)),
+    clear: store => run(store, 'readwrite', s => s.clear()),
+    // Mehrere Einträge in einem Rutsch speichern (alles oder nichts)
+    putAll: (store, list) => run(store, 'readwrite', s => { list.forEach(o => s.put(o)); return null; }),
   };
 })();
