@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-9 */
+/* Markierung für die Offline-Prüfung in sw.js: build-11 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -584,6 +584,26 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
   text-align: center;
 }
 .num-input:focus { outline: none; border-color: #c62828; }
+.nw { white-space: nowrap; }
+.arr-in, .arr-out { display: inline-block; width: 1.1em; font-weight: 900; text-align: center; }
+.arr-in { color: #2e7d32; }
+.arr-out { color: #c62828; }
+.toast .arr-in { color: #69f0ae; }
+.toast .arr-out { color: #ff6e6e; }
+
+.log-del {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -8px -4px -8px 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #b71c1c;
+  font-size: 20px;
+  font-weight: 700;
+}
+.log-del:active { background: #fdecea; }
 .log-row.goal .log-text b { color: var(--gruen); }
 .log-row.opp .log-text b { color: #b71c1c; }
 

@@ -1,7 +1,7 @@
 'use strict';
 // Spielbericht: Endstand, Spielzeit, Aufstellung, Tore und Wechsel im Liveticker-Stil.
 // Zum Kopieren (DFBnet), Herunterladen (Textdatei) und Teilen.
-// Markierung für die Offline-Prüfung in sw.js: build-9
+// Markierung für die Offline-Prüfung in sw.js: build-11
 
 function fmtMs(ms) {
   const s = Math.round(ms / 1000);
@@ -51,7 +51,8 @@ function reportData(g) {
       them++;
       ticker.push({ min, kind: 'opp', text: `Gegentor ${us}:${them}` + (ev.number ? ` – #${ev.number}` : '') });
     } else if (ev.type === 'sub') {
-      ticker.push({ min, kind: 'sub', text: `Wechsel – rein ${pl(ev.in)}, raus ${pl(ev.out)}` });
+      ticker.push({ min, kind: 'sub', text: `Wechsel – rein ${pl(ev.in)}, raus ${pl(ev.out)}`,
+        html: `<span class="arr-in">▲</span> ${esc(pl(ev.in))}<br><span class="arr-out">▼</span> ${esc(pl(ev.out))}` });
     }
   }
   if (c.phase === 'break' || c.phase === 'h2' || c.phase === 'end') pushHalftime();
@@ -173,7 +174,7 @@ pages.bericht = {
         ${r.ticker.some(t => !t.divider) ? '' : '<p class="hint">Keine Tore und keine Wechsel.</p>'}
         ${r.ticker.map(t => t.divider
           ? `<div class="rep-div">${esc(t.text)}</div>`
-          : `<div class="rep-ev ${t.kind}"><span class="log-min">${esc(t.min)}</span><span>${esc(t.text)}</span></div>`).join('')}
+          : `<div class="rep-ev ${t.kind}"><span class="log-min">${esc(t.min)}</span><span>${t.html || esc(t.text)}</span></div>`).join('')}
       </div>
 
       <h3 class="sub">Torschützen</h3>

@@ -4,7 +4,7 @@
 //
 // Bei jeder neuen Version BUILD erhöhen – und in allen Dateien der Liste
 // CHECKED die Markierung "build-N" auf dieselbe Zahl setzen.
-const BUILD = 9;
+const BUILD = 11;
 const CACHE = 'spieltag-v' + BUILD;
 const MARK = 'build-' + BUILD;
 

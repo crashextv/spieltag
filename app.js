@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-9
-const APP_VERSION = '6 (Etappe 6: Tore)';
+// Markierung für die Offline-Prüfung in sw.js: build-11
+const APP_VERSION = '6.2 (Tore löschen, Wechsel-Pfeile)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -105,6 +105,12 @@ function sheet(title, html) {
 
 // Kurze Meldung unten, optional mit Knopf (z. B. "Rückgängig")
 let toastTimer;
+// Pfeile für Wechsel: grün = kommt rein, rot = geht raus
+function subArrows(inText, outText) {
+  return `<span class="nw"><span class="arr-in">▲</span> ${inText}</span> <span class="nw"><span class="arr-out">▼</span> ${outText}</span>`;
+}
+
+// msg kann Text sein oder { html: '...' } für formatierte Meldungen
 function toast(msg, ms = 2500, action) {
   let el = document.getElementById('toast');
   if (!el) {
@@ -113,7 +119,7 @@ function toast(msg, ms = 2500, action) {
     el.className = 'toast';
     document.body.appendChild(el);
   }
-  el.innerHTML = `<span>${esc(msg)}</span>` +
+  el.innerHTML = `<span>${msg && msg.html !== undefined ? msg.html : esc(msg)}</span>` +
     (action ? `<button class="toast-btn">${esc(action.label)}</button>` : '');
   el.classList.toggle('has-btn', !!action);
   el.hidden = false;

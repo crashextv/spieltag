@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-9
+// Markierung für die Offline-Prüfung in sw.js: build-11
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
@@ -423,7 +423,8 @@ async function onLiveDrop(src, dst) {
   g.events.push(ev);
   drawLive();
   saveLive();
-  toast(`${minuteLabel(g, ev)}'  Wechsel: #${num(inId)} für #${num(outId)}`, 5000, undoAction(snap, 'Wechsel rückgängig gemacht'));
+  toast({ html: `${minuteLabel(g, ev)}'&nbsp; ${subArrows(playerText(inId), playerText(outId))}` },
+    5000, undoAction(snap, 'Wechsel rückgängig gemacht'));
 }
 
 // ---------- Tore ----------
@@ -512,6 +513,36 @@ async function oppGoalDialog() {
     s => `Gegentor ${s.us}:${s.them}` + (number ? ` – #${number}` : ''), false);
 }
 
+// Tor aus dem Protokoll löschen (auch lange nach dem Eintragen) – mit Sicherheitsabfrage
+async function deleteGoal(evId) {
+  const g = liveGame;
+  if (!g) return;
+  const ev = g.events.find(e => e.id === evId);
+  if (!ev) return;
+  const what = ev.type === 'goal' ? `Tor von ${playerText(ev.scorer).replace(/&amp;/g, '&')}`
+    : ev.type === 'ownGoalOpp' ? 'Eigentor des Gegners'
+    : `Gegentor${ev.number ? ` von #${ev.number}` : ''}`;
+  const now = score(g);
+  const after = {
+    us: now.us - (ev.type === 'oppGoal' ? 0 : 1),
+    them: now.them - (ev.type === 'oppGoal' ? 1 : 0),
+  };
+  const ok = await dialog({
+    title: 'Eintrag löschen?',
+    text: `${minuteLabel(g, ev)}' ${what} wird gelöscht. Der Spielstand ändert sich von ${now.us}:${now.them} auf ${after.us}:${after.them}.`,
+    buttons: [
+      { label: 'Abbrechen', value: false, cls: 'ghost' },
+      { label: 'Löschen', value: true, cls: 'danger' },
+    ],
+  });
+  if (!ok || !liveGame) { showLog(); return; }
+  g.events = g.events.filter(e => e.id !== evId);
+  drawLive();
+  saveLive();
+  showLog();
+  toast(`Gelöscht – Spielstand jetzt ${after.us}:${after.them}`, 4000);
+}
+
 // ---------- Protokoll ----------
 
 function sortedEvents(g) {
@@ -531,22 +562,23 @@ function showLog() {
     const min = `<span class="log-min">${minuteLabel(g, ev)}'</span>`;
     if (ev.type === 'sub') {
       return `<li class="log-row">${min}<span class="log-ico">⇄</span>
-        <span class="log-text">rein ${playerText(ev.in)}<br><small>raus ${playerText(ev.out)}</small></span></li>`;
+        <span class="log-text"><span class="arr-in">▲</span> ${playerText(ev.in)}<br><span class="arr-out">▼</span> ${playerText(ev.out)}</span></li>`;
     }
+    const del = `<button class="log-del" data-del="${ev.id}" aria-label="Eintrag löschen">✕</button>`;
     if (ev.type === 'goal') {
       us++;
       return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
-        <span class="log-text"><b>TOR ${us}:${them}</b> – ${playerText(ev.scorer)}</span></li>`;
+        <span class="log-text"><b>TOR ${us}:${them}</b> – ${playerText(ev.scorer)}</span>${del}</li>`;
     }
     if (ev.type === 'ownGoalOpp') {
       us++;
       return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
-        <span class="log-text"><b>TOR ${us}:${them}</b> – Eigentor des Gegners</span></li>`;
+        <span class="log-text"><b>TOR ${us}:${them}</b> – Eigentor des Gegners</span>${del}</li>`;
     }
     if (ev.type === 'oppGoal') {
       them++;
       return `<li class="log-row opp">${min}<span class="log-ico">🥅</span>
-        <span class="log-text"><b>Gegentor ${us}:${them}</b>${ev.number ? ` – #${ev.number}` : ''}</span></li>`;
+        <span class="log-text"><b>Gegentor ${us}:${them}</b>${ev.number ? ` – #${ev.number}` : ''}</span>${del}</li>`;
     }
     return '';
   }).join('');
@@ -556,6 +588,10 @@ function showLog() {
     <button class="btn wide" id="to-report">📄 Bericht (Zwischenstand)</button>
     <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
   sh.el.querySelector('#own-goal-opp').addEventListener('click', () => { sh.close(); ownGoalOpp(); });
+  sh.el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    sh.close();
+    deleteGoal(b.dataset.del);
+  }));
   sh.el.querySelector('#to-report').addEventListener('click', () => { sh.close(); go('bericht/' + g.id); });
   sh.el.querySelector('#discard').addEventListener('click', async () => {
     sh.close();
