@@ -1,6 +1,6 @@
 'use strict';
 // Spiel anlegen in drei Schritten: Spieldaten → Wer ist dabei? → Startaufstellung
-// Markierung für die Offline-Prüfung in sw.js: build-13
+// Markierung für die Offline-Prüfung in sw.js: build-16
 
 // Der Entwurf wird nach jeder Änderung gespeichert, damit nichts verloren geht,
 // falls das Handy zwischendurch gesperrt wird.

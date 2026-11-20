@@ -1,7 +1,7 @@
 'use strict';
 // Spielbericht: Endstand, Spielzeit, Aufstellung, Tore und Wechsel im Liveticker-Stil.
 // Zum Kopieren (DFBnet), Herunterladen (Textdatei) und Teilen.
-// Markierung für die Offline-Prüfung in sw.js: build-13
+// Markierung für die Offline-Prüfung in sw.js: build-16
 
 function fmtMs(ms) {
   const s = Math.round(ms / 1000);

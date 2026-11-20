@@ -1,6 +1,6 @@
 'use strict';
 // Spielfeld: unsere Hälfte mit festen Plätzen gemäß Formation
-// Markierung für die Offline-Prüfung in sw.js: build-13
+// Markierung für die Offline-Prüfung in sw.js: build-16
 //
 // Platz 0 ist immer der Torwart, danach Abwehr (links → rechts),
 // Mittelfeld und Sturm.

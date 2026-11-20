@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-13
-const APP_VERSION = '8 (Etappe 8: Archiv und Sicherung)';
+// Markierung für die Offline-Prüfung in sw.js: build-16
+const APP_VERSION = '8.1 (Vereinsfarben und Anleitung)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -167,6 +167,10 @@ pages.start = {
         </button>
         ${menuBtn('archiv', '📋', 'Archiv', ended ? `${ended} ${ended === 1 ? 'Spiel' : 'Spiele'} · Torschützenliste` : 'Beendete Spiele und Torschützen')}
         ${menuBtn('sicherung', '💾', 'Sicherung', backupAgeText(lastBackup))}
+        <a class="menu-btn help" href="anleitung.html">
+          <span class="sym">❓</span>
+          <span>Anleitung<small>So funktioniert die App</small></span>
+        </a>
       </div>
       <div class="status" id="status">Prüfe …</div>`;
   },

@@ -4,7 +4,7 @@
 //
 // Bei jeder neuen Version BUILD erhöhen – und in allen Dateien der Liste
 // CHECKED die Markierung "build-N" auf dieselbe Zahl setzen.
-const BUILD = 13;
+const BUILD = 16;
 const CACHE = 'spieltag-v' + BUILD;
 const MARK = 'build-' + BUILD;
 
@@ -16,6 +16,12 @@ const OTHER = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './icons/verein.png',
+  // Anleitung (auch offline lesbar)
+  './anleitung.html',
+  ...['start', 'kader', 'spieler', 'spiel1', 'spiel2', 'spiel3', 'live-start', 'live-bank', 'live-wechsel',
+    'tor', 'gegentor', 'protokoll', 'bericht', 'bearbeiten', 'nachtragen', 'archiv', 'sicherung']
+    .map(n => `./anleitung/${n}.jpg`),
 ];
 
 self.addEventListener('install', event => {

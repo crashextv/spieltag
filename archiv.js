@@ -1,6 +1,6 @@
 'use strict';
 // Archiv (beendete Spiele, Torschützenliste) und Datensicherung
-// Markierung für die Offline-Prüfung in sw.js: build-13
+// Markierung für die Offline-Prüfung in sw.js: build-16
 
 function isEnded(g) { return !!(g.clock && g.clock.phase === 'end'); }
 
@@ -156,7 +156,7 @@ pages.sicherung = {
     const d = daysAgo(last);
     return `
       <div class="status">
-        <div><b>Auf diesem Handy:</b> ${players.length} Spieler, ${games.length} Spiele</div>
+        <div><b>Auf diesem Handy:</b> ${players.length} Spieler, ${games.length} ${games.length === 1 ? 'Spiel' : 'Spiele'}</div>
         <div class="${d === null || d > 14 ? 'warn' : 'ok'}">${backupAgeText(last)}</div>
       </div>
       <p class="hint" style="margin-top:14px">Ihre Daten liegen nur auf diesem Handy. Speichern Sie ab und zu eine Sicherung –

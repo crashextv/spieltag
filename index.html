@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1b5e20">
-  <meta name="build" content="build-13">
+  <meta name="theme-color" content="#c40809">
+  <meta name="build" content="build-16">
   <title>Spieltag</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
@@ -13,8 +13,16 @@
 </head>
 <body>
   <header class="topbar">
-    <button id="btn-back" class="icon-btn" aria-label="Zurück" hidden>&#8592;</button>
-    <h1 id="title">Spieltag</h1>
+    <div class="tb-side">
+      <button id="btn-back" class="icon-btn" aria-label="Zurück" hidden>&#8592;</button>
+    </div>
+    <div class="tb-center">
+      <img class="tb-icon" src="icons/icon-192.png" alt="">
+      <h1 id="title">Spieltag</h1>
+    </div>
+    <div class="tb-side right">
+      <img class="tb-club" src="icons/verein.png" alt="Vereinslogo">
+    </div>
   </header>
 
   <main id="view"></main>

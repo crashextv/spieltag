@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#c40809">
+  <title>Spieltag – Anleitung</title>
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    :root {
+      --rot: #c40809;
+      --rot-dunkel: #a80607;
+      --tint: #fdf3f3;
+      --text: #1a1a1a;
+      --leise: #645e5e;
+      --rand: #ddd7d7;
+      --hinter: #f5f4f4;
+      --gruen: #2e7d32;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--hinter);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 18px;
+      line-height: 1.55;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 52px 1fr 52px;
+      align-items: center;
+      min-height: 64px;
+      padding: 6px 10px;
+      padding-top: calc(6px + env(safe-area-inset-top));
+      background: var(--rot);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    header .mid { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    header .mid img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.85); }
+    header h1 { margin: 0; font-size: 21px; }
+    header .club { justify-self: end; height: 48px; padding: 2px; border-radius: 8px; background: #fff; }
+    header a.back { color: #fff; font-size: 26px; text-decoration: none; padding: 6px 10px; }
+
+    main { max-width: 720px; margin: 0 auto; padding: 16px 16px 60px; }
+    h2 {
+      margin: 40px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 3px solid var(--rot);
+      font-size: 24px;
+    }
+    h3 { margin: 26px 0 8px; font-size: 19px; }
+    p { margin: 8px 0; }
+    .intro {
+      padding: 16px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--rand);
+    }
+    .intro ul { margin: 8px 0 0; padding-left: 22px; }
+    .toc { display: grid; gap: 8px; margin: 16px 0; }
+    .toc a {
+      display: block;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--rand);
+      color: var(--text);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .toc a span { color: var(--rot); margin-right: 8px; }
+    .linkbox {
+      margin: 12px 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--tint);
+      border: 2px dashed var(--rot);
+      font-weight: 700;
+      word-break: break-all;
+    }
+    .step {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+      padding: 16px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid var(--rand);
+    }
+    @media (min-width: 640px) {
+      .step { grid-template-columns: 240px 1fr; align-items: start; }
+    }
+    .step .pic { display: flex; justify-content: center; }
+    .shot {
+      width: 100%;
+      max-width: 240px;
+      border-radius: 22px;
+      border: 6px solid #222;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25);
+      background: #222;
+    }
+    .sketch { width: 100%; max-width: 240px; height: auto; }
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--rot);
+      color: #fff;
+      font-weight: 800;
+      font-size: 17px;
+      vertical-align: middle;
+    }
+    .step h3 { margin-top: 0; }
+    .tip {
+      margin: 10px 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #fff8e1;
+      color: #5d4300;
+      font-size: 16px;
+    }
+    .ok { color: var(--gruen); font-weight: 700; }
+    .in { color: var(--gruen); font-weight: 900; }
+    .out { color: var(--rot); font-weight: 900; }
+    kbd {
+      display: inline-block;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1px solid var(--rand);
+      background: #fff;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .faq details {
+      margin: 8px 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--rand);
+    }
+    .faq summary { font-weight: 700; cursor: pointer; }
+    .update-mock {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      max-width: 340px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #263238;
+      color: #fff;
+      font-size: 16px;
+    }
+    .update-mock b { padding: 8px 12px; border-radius: 8px; background: #ffb300; color: #000; }
+    .top { display: block; margin-top: 10px; font-size: 15px; color: var(--rot); }
+    .btn-app {
+      display: block;
+      margin: 24px 0 0;
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--rot);
+      color: #fff;
+      font-size: 19px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a class="back" href="./" aria-label="Zur App">&#8592;</a>
+  <div class="mid"><img src="icons/icon-192.png" alt=""><h1>Anleitung</h1></div>
+  <img class="club" src="icons/verein.png" alt="Vereinslogo">
+</header>
+
+<main>
+  <div class="intro" id="oben">
+    <p><b>Spieltag</b> ist eine App für Trainerinnen und Trainer von Kindermannschaften. Damit haben Sie am Spieltag alles im Griff:</p>
+    <ul>
+      <li>Aufstellung, Wechsel und Tore mit der richtigen Spielminute</li>
+      <li>Spieluhr mit Halbzeit und Nachspielzeit</li>
+      <li>fertiger Spielbericht zum Abtippen ins DFBnet</li>
+      <li>funktioniert <b>ohne Internet</b> auf dem Sportplatz</li>
+    </ul>
+    <p><b>Ihre Daten bleiben nur auf Ihrem Handy.</b> Nichts wird ins Internet geschickt.</p>
+  </div>
+
+  <nav class="toc">
+    <a href="#installieren"><span>1</span>App aufs Handy holen</a>
+    <a href="#kader"><span>2</span>Kader anlegen</a>
+    <a href="#spiel"><span>3</span>Spiel anlegen</a>
+    <a href="#live"><span>4</span>Während des Spiels</a>
+    <a href="#bericht"><span>5</span>Nach dem Spiel: Bericht</a>
+    <a href="#nachtragen"><span>6</span>Korrigieren und nachtragen</a>
+    <a href="#archiv"><span>7</span>Archiv und Sicherung</a>
+    <a href="#fragen"><span>?</span>Häufige Fragen</a>
+  </nav>
+
+  <!-- ============ 1. Installieren ============ -->
+  <h2 id="installieren">1. App aufs Handy holen</h2>
+  <p>Die App wird nicht im Play Store geladen, sondern direkt über Chrome. Das dauert eine Minute
+    und ist kostenlos. Sie brauchen dafür <b>einmal Internet</b>.</p>
+  <p>Beschrieben ist Android mit dem Browser <b>Chrome</b>. Die Bilder sind vereinfachte Skizzen –
+    auf Ihrem Handy kann es leicht anders aussehen.</p>
+
+  <div class="step">
+    <div class="pic">
+      <svg class="sketch" viewBox="0 0 220 400" role="img" aria-label="Chrome mit der Adresse der App">
+        <rect x="4" y="4" width="212" height="392" rx="26" fill="#222"/>
+        <rect x="12" y="14" width="196" height="372" rx="18" fill="#fff"/>
+        <rect x="12" y="14" width="196" height="54" rx="18" fill="#f1f3f4"/>
+        <rect x="12" y="50" width="196" height="18" fill="#f1f3f4"/>
+        <rect x="22" y="28" width="148" height="28" rx="14" fill="#fff" stroke="#ccc"/>
+        <text x="32" y="47" font-size="10.5" fill="#333" font-family="sans-serif">crashextv.github.io/spieltag</text>
+        <circle cx="190" cy="42" r="15" fill="none" stroke="#c40809" stroke-width="3"/>
+        <circle cx="190" cy="35" r="2.2" fill="#333"/><circle cx="190" cy="42" r="2.2" fill="#333"/><circle cx="190" cy="49" r="2.2" fill="#333"/>
+        <rect x="12" y="74" width="196" height="40" fill="#c40809"/>
+        <text x="110" y="99" font-size="15" fill="#fff" font-weight="bold" text-anchor="middle" font-family="sans-serif">Spieltag</text>
+        <rect x="26" y="128" width="168" height="38" rx="8" fill="#fff" stroke="#ddd"/>
+        <rect x="26" y="174" width="168" height="38" rx="8" fill="#fff" stroke="#ddd"/>
+        <rect x="26" y="220" width="168" height="38" rx="8" fill="#fff" stroke="#ddd"/>
+        <rect x="26" y="266" width="168" height="38" rx="8" fill="#fff" stroke="#ddd"/>
+        <path d="M150 112 L180 64" stroke="#c40809" stroke-width="3" marker-end="url(#pfeil1)"/>
+        <defs><marker id="pfeil1" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c40809"/></marker></defs>
+      </svg>
+    </div>
+    <div>
+      <h3><span class="num">1</span>Link in Chrome öffnen</h3>
+      <p>Öffnen Sie diesen Link auf dem Handy in <b>Chrome</b>:</p>
+      <div class="linkbox">https://crashextv.github.io/spieltag/</div>
+      <p>Die App erscheint. Tippen Sie dann oben rechts auf die <b>drei Punkte ⋮</b>.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="pic">
+      <svg class="sketch" viewBox="0 0 220 400" role="img" aria-label="Chrome-Menü mit App installieren">
+        <rect x="4" y="4" width="212" height="392" rx="26" fill="#222"/>
+        <rect x="12" y="14" width="196" height="372" rx="18" fill="#fff"/>
+        <rect x="12" y="74" width="196" height="40" fill="#c40809"/>
+        <rect x="12" y="114" width="196" height="272" fill="#eee"/>
+        <rect x="70" y="22" width="132" height="300" rx="8" fill="#fff" stroke="#ccc"/>
+        <g font-family="sans-serif" font-size="11" fill="#333">
+          <text x="84" y="48">Neuer Tab</text>
+          <text x="84" y="76">Verlauf</text>
+          <text x="84" y="104">Downloads</text>
+          <text x="84" y="132">Lesezeichen</text>
+          <text x="84" y="160">Teilen …</text>
+          <text x="84" y="188">Seite suchen</text>
+          <rect x="74" y="200" width="124" height="30" rx="6" fill="#fdecec" stroke="#c40809" stroke-width="2"/>
+          <text x="84" y="220" font-weight="bold" fill="#c40809">App installieren</text>
+          <text x="84" y="252">Desktopwebsite</text>
+          <text x="84" y="280">Einstellungen</text>
+          <text x="84" y="308">Hilfe</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <h3><span class="num">2</span>„App installieren“ antippen</h3>
+      <p>Im Menü steht <b>„App installieren“</b>. Bei manchen Handys heißt es
+        <b>„Zum Startbildschirm hinzufügen“</b> – das ist genauso richtig.</p>
+      <div class="tip">Manchmal blendet Chrome den Hinweis „App installieren“ auch von selbst unten ein.
+        Dann können Sie einfach dort tippen.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="pic">
+      <svg class="sketch" viewBox="0 0 220 400" role="img" aria-label="Bestätigungsfenster Installieren">
+        <rect x="4" y="4" width="212" height="392" rx="26" fill="#222"/>
+        <rect x="12" y="14" width="196" height="372" rx="18" fill="#888"/>
+        <rect x="24" y="140" width="172" height="130" rx="14" fill="#fff"/>
+        <text x="40" y="170" font-family="sans-serif" font-size="13" font-weight="bold" fill="#222">App installieren?</text>
+        <image href="icons/icon-192.png" x="40" y="184" width="34" height="34"/>
+        <text x="84" y="200" font-family="sans-serif" font-size="12" fill="#222">Spieltag</text>
+        <text x="84" y="214" font-family="sans-serif" font-size="9" fill="#777">crashextv.github.io</text>
+        <text x="72" y="252" font-family="sans-serif" font-size="11" fill="#555">Abbrechen</text>
+        <rect x="126" y="236" width="60" height="24" rx="12" fill="#c40809"/>
+        <text x="156" y="252" font-family="sans-serif" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Installieren</text>
+        <circle cx="156" cy="248" r="22" fill="none" stroke="#ffb300" stroke-width="3"/>
+      </svg>
+    </div>
+    <div>
+      <h3><span class="num">3</span>Mit „Installieren“ bestätigen</h3>
+      <p>Es erscheint ein kleines Fenster mit dem App-Symbol. Tippen Sie auf <b>„Installieren“</b>
+        (oder „Hinzufügen“).</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="pic">
+      <svg class="sketch" viewBox="0 0 220 400" role="img" aria-label="Startbildschirm mit Spieltag-Symbol">
+        <defs>
+          <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a6ea5"/><stop offset="1" stop-color="#7fb2d9"/></linearGradient>
+        </defs>
+        <rect x="4" y="4" width="212" height="392" rx="26" fill="#222"/>
+        <rect x="12" y="14" width="196" height="372" rx="18" fill="url(#hg)"/>
+        <text x="110" y="70" font-family="sans-serif" font-size="30" fill="#fff" text-anchor="middle">10:30</text>
+        <g fill="#ffffff" fill-opacity=".85">
+          <rect x="30" y="250" width="34" height="34" rx="10"/><rect x="74" y="250" width="34" height="34" rx="10"/>
+          <rect x="118" y="250" width="34" height="34" rx="10"/>
+          <rect x="30" y="310" width="34" height="34" rx="10"/><rect x="74" y="310" width="34" height="34" rx="10"/>
+          <rect x="118" y="310" width="34" height="34" rx="10"/><rect x="162" y="310" width="34" height="34" rx="10"/>
+        </g>
+        <image href="icons/icon-192.png" x="160" y="248" width="38" height="38" clip-path="circle(19px)"/>
+        <circle cx="179" cy="267" r="25" fill="none" stroke="#ffb300" stroke-width="3"/>
+        <text x="179" y="300" font-family="sans-serif" font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">Spieltag</text>
+      </svg>
+    </div>
+    <div>
+      <h3><span class="num">4</span>Fertig – das Symbol ist da</h3>
+      <p>Auf dem Startbildschirm finden Sie jetzt das <b>rote Fußball-Symbol „Spieltag“</b>.
+        Ab jetzt starten Sie die App immer über dieses Symbol – nicht mehr über Chrome.</p>
+      <div class="tip">Findet man das Symbol nicht auf dem Startbildschirm, liegt es manchmal in der Liste
+        aller Apps. Von dort können Sie es mit dem Finger auf den Startbildschirm ziehen.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/start.jpg" alt="Startseite der App" loading="lazy"></div>
+    <div>
+      <h3><span class="num">5</span>Kurz prüfen</h3>
+      <p>Öffnen Sie die App über das Symbol. Unten auf der Startseite steht ein Kasten:</p>
+      <ul>
+        <li>„Offline nutzbar: <span class="ok">ja ✓</span>“ – die App läuft jetzt auch ohne Internet.</li>
+        <li>„Als App gestartet: <span class="ok">ja ✓</span>“ – Sie haben sie richtig gestartet.</li>
+      </ul>
+      <p><b>Test:</b> Flugmodus einschalten und die App öffnen. Sie startet trotzdem.</p>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 2. Kader ============ -->
+  <h2 id="kader">2. Kader anlegen</h2>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/kader.jpg" alt="Kaderliste" loading="lazy"></div>
+    <div>
+      <h3>Die Spielerliste</h3>
+      <p>Auf der Startseite <b>„Kader“</b> antippen. Hier stehen alle Spieler, sortiert nach Rückennummer.</p>
+      <p>Unten rechts mit <b>„+ Spieler“</b> legen Sie einen neuen Spieler an.
+        Einen Spieler antippen, um ihn zu ändern oder zu löschen.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/spieler.jpg" alt="Spieler anlegen" loading="lazy"></div>
+    <div>
+      <h3>Spieler anlegen</h3>
+      <p><b>Name</b> und <b>Rückennummer</b> eintragen, dann <b>„Speichern“</b>.</p>
+      <p>Mit <b>„Foto wählen“</b> können Sie ein Bild mit der Kamera machen oder aus der Galerie nehmen.
+        Ohne Foto zeigt die App einen roten Kreis mit der Nummer bzw. den Anfangsbuchstaben.</p>
+      <div class="tip">Jede Rückennummer gibt es nur einmal – die App warnt, wenn eine Nummer schon vergeben ist.</div>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 3. Spiel anlegen ============ -->
+  <h2 id="spiel">3. Spiel anlegen</h2>
+  <p>Auf der Startseite <b>„Neues Spiel“</b> antippen. Es geht in drei Schritten:</p>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/spiel1.jpg" alt="Spieldaten und Formation" loading="lazy"></div>
+    <div>
+      <h3><span class="num">1</span>Spieldaten</h3>
+      <p>Datum, eigene Mannschaft und Gegner eintragen.</p>
+      <p>Mit <kbd>−</kbd> und <kbd>+</kbd> stellen Sie die <b>Dauer einer Halbzeit</b> und die <b>Formation</b>
+        ein (wie viele Spieler in Sturm, Mittelfeld und Abwehr – ein Torwart ist immer dabei).
+        Ein kleines Spielfeld zeigt sofort, wie es aussieht.</p>
+      <div class="tip">Mannschaftsname, Halbzeitdauer und Formation merkt sich die App fürs nächste Spiel.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/spiel2.jpg" alt="Wer ist dabei" loading="lazy"></div>
+    <div>
+      <h3><span class="num">2</span>Wer ist dabei?</h3>
+      <p>Zuerst sind alle Spieler angehakt. Wer heute fehlt, einfach antippen – dann ist der Haken weg.</p>
+      <p>Unten sehen Sie, wie viele auf dem Feld und auf der Bank sind.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/spiel3.jpg" alt="Startaufstellung" loading="lazy"></div>
+    <div>
+      <h3><span class="num">3</span>Startaufstellung</h3>
+      <p><b>Ziehen</b> Sie Spieler mit dem Finger von der <b>Bank</b> auf einen freien Platz.
+        Oder tippen Sie auf einen Platz und wählen den Spieler aus der Liste.</p>
+      <ul>
+        <li>Spieler auf dem Feld auf einen anderen ziehen = die beiden <b>tauschen</b>.</li>
+        <li>Spieler vom Feld auf die Bank ziehen = er sitzt wieder auf der Bank.</li>
+        <li><b>„Freie Plätze automatisch füllen“</b> besetzt den Rest auf einmal.</li>
+      </ul>
+      <p>Zum Schluss <b>„Spiel anlegen“</b> antippen.</p>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 4. Live ============ -->
+  <h2 id="live">4. Während des Spiels</h2>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/live-start.jpg" alt="Spielansicht vor Anpfiff" loading="lazy"></div>
+    <div>
+      <h3>Die Spielansicht</h3>
+      <p>Oben: Spielstand und Uhr. In der Mitte: Ihr Spielfeld mit der Aufstellung. Unten: Protokoll, Gegentor und Bank.</p>
+      <h3>Die Uhr</h3>
+      <ul>
+        <li><b>▶</b> = Anpfiff bzw. weiter, <b>⏸</b> = Uhr anhalten.</li>
+        <li>Ist die Halbzeit um, <b>vibriert das Handy</b> und die Pause beginnt automatisch.
+          Mit <b>▶</b> starten Sie die 2. Halbzeit.</li>
+        <li>Nach dem Ende der 2. Halbzeit vibriert es wieder und der <b>Spielbericht</b> öffnet sich.</li>
+        <li>Mit <kbd>+</kbd> neben der Uhr tragen Sie <b>Nachspielzeit</b> ein. Dann läuft die Uhr entsprechend
+          länger, und Ereignisse stehen im Bericht z. B. als „25+2“.</li>
+      </ul>
+      <div class="tip">Die Uhr läuft auch weiter, wenn das Handy gesperrt ist. Vibrieren kann es aber nur,
+        solange die App offen ist – die App hält dafür den Bildschirm an.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/live-bank.jpg" alt="Bank geöffnet" loading="lazy"></div>
+    <div>
+      <h3>Wechseln</h3>
+      <p>Unten rechts <b>„Bank ▲“</b> antippen – die Bank fährt hoch.</p>
+      <p>Einen <b>Bankspieler auf den Feldspieler ziehen</b>, der raus soll. Fertig – die Spielminute wird notiert.</p>
+      <h3>Positionen tauschen</h3>
+      <p>Einen <b>Feldspieler auf einen anderen Feldspieler ziehen</b>. Die beiden tauschen die Plätze.
+        Das ist kein Wechsel und wird nicht notiert.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/live-wechsel.jpg" alt="Meldung nach dem Wechsel" loading="lazy"></div>
+    <div>
+      <h3>Die Meldung mit „Rückgängig“</h3>
+      <p>Nach jedem Wechsel und jedem Tor erscheint unten kurz eine Meldung:</p>
+      <ul>
+        <li><span class="in">▲</span> grün = kommt rein</li>
+        <li><span class="out">▼</span> rot = geht raus</li>
+      </ul>
+      <p>Vertippt? Einfach <b>„Rückgängig“</b> antippen (geht etwa 5 Sekunden lang).</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/tor.jpg" alt="Tor eingetragen" loading="lazy"></div>
+    <div>
+      <h3>Eigenes Tor</h3>
+      <p><b>Zweimal schnell auf den Torschützen tippen.</b> Groß erscheint „TOR!“, das Handy vibriert kurz
+        und der Spielstand erhöht sich.</p>
+      <p>Ein <b>Eigentor des Gegners</b> (zählt für uns) tragen Sie über <b>„Protokoll“</b> ein.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/gegentor.jpg" alt="Gegentor eintragen" loading="lazy"></div>
+    <div>
+      <h3>Gegentor</h3>
+      <p>Unten <b>„Gegentor“</b> antippen, die <b>Rückennummer</b> des Torschützen eintippen
+        (darf auch leer bleiben) und <b>„Eintragen“</b>. Die Minute trägt die App selbst ein.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/protokoll.jpg" alt="Protokoll" loading="lazy"></div>
+    <div>
+      <h3>Protokoll</h3>
+      <p>Unten links <b>„Protokoll“</b> zeigt alle Tore und Wechsel mit Minute.</p>
+      <p>Mit dem roten <b>✕</b> löschen Sie einen Eintrag – auch noch lange danach. Vorher fragt die App nach
+        und zeigt, wie sich der Spielstand ändert.</p>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 5. Bericht ============ -->
+  <h2 id="bericht">5. Nach dem Spiel: Bericht</h2>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/bericht.jpg" alt="Spielbericht" loading="lazy"></div>
+    <div>
+      <p>Nach dem Abpfiff öffnet sich der <b>Spielbericht</b>: Endstand, Halbzeitstand, Spielzeit,
+        alle Tore und Wechsel mit Minute, Torschützen und Startaufstellung.</p>
+      <ul>
+        <li><b>Kopieren</b> – den Text dann z. B. ins DFBnet oder in eine Nachricht einfügen.</li>
+        <li><b>Herunterladen</b> – als Textdatei im Ordner „Downloads“.</li>
+        <li><b>Teilen</b> – z. B. per WhatsApp oder E-Mail verschicken.</li>
+      </ul>
+      <div class="tip">Den Bericht finden Sie später jederzeit wieder im <b>Archiv</b>.</div>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 6. Nachtragen ============ -->
+  <h2 id="nachtragen">6. Korrigieren und nachtragen</h2>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/bearbeiten.jpg" alt="Protokoll bearbeiten" loading="lazy"></div>
+    <div>
+      <p>Über <b>„Protokoll bearbeiten / nachtragen“</b> (im Bericht oder im Protokoll der Spielansicht) können Sie:</p>
+      <ul>
+        <li>einen Eintrag <b>antippen</b> und Minute oder Spieler <b>ändern</b> oder ihn <b>löschen</b>,</li>
+        <li>mit <b>„+ Ereignis nachtragen“</b> ein vergessenes Tor, Gegentor oder einen Wechsel ergänzen.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/nachtragen.jpg" alt="Tor nachtragen" loading="lazy"></div>
+    <div>
+      <h3>Minute eingeben</h3>
+      <p>Einfach die Spielminute eintippen, z. B. <kbd>13</kbd>. Nachspielzeit schreiben Sie so:
+        <kbd>25+2</kbd> (bei 25 Minuten pro Halbzeit).</p>
+      <h3>Ein ganzes Spiel nachträglich erfassen</h3>
+      <ol>
+        <li>Spiel wie gewohnt anlegen (mit Startaufstellung), Uhr <b>nicht</b> starten.</li>
+        <li>„Protokoll“ → „Bearbeiten / Nachtragen“ → alle Ereignisse eintragen.</li>
+        <li><b>„Spiel als beendet markieren“</b> antippen – fertig ist der Bericht.</li>
+      </ol>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ 7. Archiv ============ -->
+  <h2 id="archiv">7. Archiv und Sicherung</h2>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/archiv.jpg" alt="Torschützenliste" loading="lazy"></div>
+    <div>
+      <h3>Archiv</h3>
+      <p>Startseite → <b>„Archiv“</b>. Unter <b>„Spiele“</b> stehen alle beendeten Spiele – antippen öffnet den Bericht.</p>
+      <p>Unter <b>„Torschützen“</b> sehen Sie für jeden Spieler die Tore und die Zahl der Spiele
+        (Startelf oder eingewechselt) über die ganze Saison.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="pic"><img class="shot" src="anleitung/sicherung.jpg" alt="Sicherung" loading="lazy"></div>
+    <div>
+      <h3>Sicherung – bitte regelmäßig!</h3>
+      <p>Alle Daten liegen <b>nur auf Ihrem Handy</b>. Geht das Handy verloren oder wird Chrome zurückgesetzt,
+        wären sie weg. Deshalb ab und zu:</p>
+      <ul>
+        <li><b>„Sicherung teilen“</b> und die Datei an sich selbst schicken (E-Mail oder Cloud) – am sichersten.</li>
+        <li>oder <b>„Sicherung speichern“</b> – die Datei landet im Ordner „Downloads“.</li>
+      </ul>
+      <p>Mit <b>„Sicherung einspielen“</b> holen Sie alles zurück – auch auf einem neuen Handy
+        (vorher die App wie in Teil 1 installieren).</p>
+      <div class="tip">Die Sicherungsdatei enthält Namen und Fotos Ihrer Spieler. Schicken Sie sie nur an sich selbst.</div>
+    </div>
+  </div>
+  <a class="top" href="#oben">↑ nach oben</a>
+
+  <!-- ============ Fragen ============ -->
+  <h2 id="fragen">Häufige Fragen</h2>
+  <div class="faq">
+    <details>
+      <summary>Unten steht „Neue Version verfügbar“ – was tun?</summary>
+      <div class="update-mock">Neue Version verfügbar <b>Jetzt laden</b></div>
+      <p>Einfach <b>„Jetzt laden“</b> antippen. Die App lädt neu, Ihre Daten bleiben erhalten.
+        Das klappt nur mit Internet.</p>
+    </details>
+    <details>
+      <summary>Sieht jemand anderes meine Spieler oder Spiele?</summary>
+      <p>Nein. Alles wird nur auf Ihrem Handy gespeichert und nie ins Internet geschickt.
+        Wer den Link bekommt, erhält eine leere App.</p>
+    </details>
+    <details>
+      <summary>Brauche ich auf dem Sportplatz Internet?</summary>
+      <p>Nein. Nur einmal zum Installieren und gelegentlich für Updates.</p>
+    </details>
+    <details>
+      <summary>Das Handy vibriert nicht am Halbzeitende.</summary>
+      <p>Vibrieren geht nur, wenn die App offen ist und der Bildschirm an ist. Die Zeit stimmt trotzdem:
+        Öffnen Sie die App, dann erscheint Halbzeit bzw. Bericht sofort. Prüfen Sie außerdem, ob am Handy
+        Vibration eingeschaltet ist.</p>
+    </details>
+    <details>
+      <summary>Geht das auch auf dem iPhone?</summary>
+      <p>Die App ist für Android gemacht. Auf dem iPhone in Safari: Teilen-Symbol → „Zum Home-Bildschirm“.
+        Das meiste sollte laufen, Vibration gibt es dort aber nicht. Getestet ist das iPhone nicht.</p>
+    </details>
+    <details>
+      <summary>Ich habe aus Versehen das falsche Tor eingetragen.</summary>
+      <p>Direkt danach: „Rückgängig“ in der Meldung. Später: „Protokoll“ → rotes ✕ beim Eintrag,
+        oder über „Bearbeiten / Nachtragen“ ändern.</p>
+    </details>
+  </div>
+
+  <a class="btn-app" href="./">Zur App</a>
+</main>
+</body>
+</html>
