@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-11
+// Markierung für die Offline-Prüfung in sw.js: build-12
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
@@ -519,28 +519,11 @@ async function deleteGoal(evId) {
   if (!g) return;
   const ev = g.events.find(e => e.id === evId);
   if (!ev) return;
-  const what = ev.type === 'goal' ? `Tor von ${playerText(ev.scorer).replace(/&amp;/g, '&')}`
-    : ev.type === 'ownGoalOpp' ? 'Eigentor des Gegners'
-    : `Gegentor${ev.number ? ` von #${ev.number}` : ''}`;
-  const now = score(g);
-  const after = {
-    us: now.us - (ev.type === 'oppGoal' ? 0 : 1),
-    them: now.them - (ev.type === 'oppGoal' ? 1 : 0),
-  };
-  const ok = await dialog({
-    title: 'Eintrag löschen?',
-    text: `${minuteLabel(g, ev)}' ${what} wird gelöscht. Der Spielstand ändert sich von ${now.us}:${now.them} auf ${after.us}:${after.them}.`,
-    buttons: [
-      { label: 'Abbrechen', value: false, cls: 'ghost' },
-      { label: 'Löschen', value: true, cls: 'danger' },
-    ],
-  });
-  if (!ok || !liveGame) { showLog(); return; }
-  g.events = g.events.filter(e => e.id !== evId);
-  drawLive();
-  saveLive();
+  const msg = await confirmDeleteEvent(g, ev); // gemeinsame Abfrage aus protokoll.js (auch für Wechsel)
+  if (!liveGame) return;
+  if (msg) { drawLive(); saveLive(); }
   showLog();
-  toast(`Gelöscht – Spielstand jetzt ${after.us}:${after.them}`, 4000);
+  if (msg) toast(msg, 4000);
 }
 
 // ---------- Protokoll ----------
@@ -560,11 +543,11 @@ function showLog() {
   let us = 0, them = 0;
   const rows = evs.map(ev => {
     const min = `<span class="log-min">${minuteLabel(g, ev)}'</span>`;
+    const del = `<button class="log-del" data-del="${ev.id}" aria-label="Eintrag löschen">✕</button>`;
     if (ev.type === 'sub') {
       return `<li class="log-row">${min}<span class="log-ico">⇄</span>
-        <span class="log-text"><span class="arr-in">▲</span> ${playerText(ev.in)}<br><span class="arr-out">▼</span> ${playerText(ev.out)}</span></li>`;
+        <span class="log-text"><span class="arr-in">▲</span> ${playerText(ev.in)}<br><span class="arr-out">▼</span> ${playerText(ev.out)}</span>${del}</li>`;
     }
-    const del = `<button class="log-del" data-del="${ev.id}" aria-label="Eintrag löschen">✕</button>`;
     if (ev.type === 'goal') {
       us++;
       return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
@@ -585,9 +568,11 @@ function showLog() {
   const sh = sheet('Protokoll', `
     ${evs.length ? `<ul class="log">${rows}</ul>` : '<p class="hint">Noch keine Ereignisse.</p>'}
     <button class="btn wide" id="own-goal-opp">⚽ Eigentor des Gegners (Tor für uns)</button>
+    <button class="btn wide" id="edit-log">✏️ Bearbeiten / Nachtragen</button>
     <button class="btn wide" id="to-report">📄 Bericht (Zwischenstand)</button>
     <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
   sh.el.querySelector('#own-goal-opp').addEventListener('click', () => { sh.close(); ownGoalOpp(); });
+  sh.el.querySelector('#edit-log').addEventListener('click', () => { sh.close(); go('protokoll/' + g.id); });
   sh.el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     sh.close();
     deleteGoal(b.dataset.del);

@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-11
-const APP_VERSION = '6.2 (Tore löschen, Wechsel-Pfeile)';
+// Markierung für die Offline-Prüfung in sw.js: build-12
+const APP_VERSION = '7 (Etappe 7: Protokoll bearbeiten und nachtragen)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');

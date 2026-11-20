@@ -1,7 +1,7 @@
 'use strict';
 // Spielbericht: Endstand, Spielzeit, Aufstellung, Tore und Wechsel im Liveticker-Stil.
 // Zum Kopieren (DFBnet), Herunterladen (Textdatei) und Teilen.
-// Markierung für die Offline-Prüfung in sw.js: build-11
+// Markierung für die Offline-Prüfung in sw.js: build-12
 
 function fmtMs(ms) {
   const s = Math.round(ms / 1000);
@@ -105,7 +105,7 @@ function reportText(g) {
   }
   L.push('');
   L.push('TORSCHÜTZEN');
-  L.push(r.scorerList.length ? r.scorerList.join('\n') : '–');
+  L.push(...(r.scorerList.length ? r.scorerList : ['–']));
   return L.join('\r\n');
 }
 
@@ -161,6 +161,7 @@ pages.bericht = {
         <button class="btn" id="rep-dl">⬇️ Herunterladen</button>
         ${navigator.share ? '<button class="btn" id="rep-share">📤 Teilen</button>' : ''}
       </div>
+      <button class="btn wide" id="rep-edit">✏️ Protokoll bearbeiten / nachtragen</button>
 
       <h3 class="sub">Spielzeit</h3>
       <div class="rep-box">
@@ -190,6 +191,7 @@ pages.bericht = {
     const g = reportGame;
     if (!g) return;
     const text = reportText(g);
+    document.getElementById('rep-edit').addEventListener('click', () => go('protokoll/' + g.id));
     document.getElementById('rep-copy').addEventListener('click', async () => {
       toast(await copyText(text) ? 'Bericht kopiert – jetzt z. B. ins DFBnet einfügen' : 'Kopieren hat nicht geklappt');
     });

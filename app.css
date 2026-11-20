@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-11 */
+/* Markierung für die Offline-Prüfung in sw.js: build-12 */
 :root {
   --gruen: #1b5e20;
   --gruen-hell: #2e7d32;
@@ -606,6 +606,30 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 .log-del:active { background: #fdecea; }
 .log-row.goal .log-text b { color: var(--gruen); }
 .log-row.opp .log-text b { color: #b71c1c; }
+
+/* ---------- Protokoll bearbeiten ---------- */
+
+.rep-head.small { padding: 10px 16px; margin-bottom: 10px; }
+.rep-head.small .rep-score { font-size: 32px; margin: 0; }
+.ev-row { align-items: flex-start; padding: 10px 12px; font-size: 16px; }
+.ev-row .log-text { flex: 1; line-height: 1.35; }
+.ev-row.goal .log-text b { color: var(--gruen); }
+.ev-row.opp .log-text b { color: #b71c1c; }
+.ev-row .chev { align-self: center; }
+.type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.type-grid .btn { min-height: 64px; font-size: 17px; }
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  background: var(--karte);
+  color: var(--text);
+  font-size: 18px;
+}
+#rep-edit { margin-top: 0; }
 
 /* ---------- Spielbericht ---------- */
 
