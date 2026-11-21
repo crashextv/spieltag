@@ -1,6 +1,6 @@
 'use strict';
 // Spielansicht: Spielstand, Uhr, Spielfeld, Bank, Wechsel, Protokoll
-// Markierung für die Offline-Prüfung in sw.js: build-16
+// Markierung für die Offline-Prüfung in sw.js: build-18
 
 let liveGame = null;     // das laufende Spiel
 let livePlayers = {};    // Spieler des Spiels (Name, Nummer, Foto)
@@ -438,7 +438,7 @@ function onPitchTap(e) {
   const now = Date.now();
   if (lastTap.slot === i && now - lastTap.t < 450) {
     lastTap = { slot: null, t: 0 };
-    ourGoal(i);
+    goalChoice(i);
   } else {
     lastTap = { slot: i, t: now };
   }
@@ -471,46 +471,79 @@ function addGoalEvent(ev, msgFn, cheer) {
   toast(`${minuteLabel(g, ev)}'  ${msgFn(s)}`, 5000, undoAction(snap, 'Tor rückgängig gemacht'));
 }
 
-function ourGoal(i) {
+// Doppeltipp auf einen Spieler: Tor oder Eigentor?
+async function goalChoice(i) {
   const g = liveGame;
   if (!g || !canScore(g)) return;
   const id = g.slots[i];
   if (!id) return;
-  addGoalEvent({ id: newId(), type: 'goal', ...nowStamp(g), scorer: id },
-    s => `TOR ${s.us}:${s.them} – #${num(id)} ${livePlayers[id].name}`, true);
+  const stamp = nowStamp(g); // Minute beim Doppeltipp festhalten
+  const p = livePlayers[id];
+  const choice = await dialog({
+    title: `#${p.number} ${p.name} (${minuteLabel(g, stamp)}')`,
+    text: 'Was ist passiert?',
+    buttons: [
+      { label: '⚽ Tor', value: 'goal', cls: 'primary big' },
+      { label: 'Eigentor (zählt für den Gegner)', value: 'own', cls: 'big' },
+      { label: 'Abbrechen', value: null, cls: 'ghost' },
+    ],
+    stacked: true,
+  });
+  if (!choice || !liveGame) return;
+  if (choice === 'goal') {
+    addGoalEvent({ id: newId(), type: 'goal', ...stamp, scorer: id },
+      s => `TOR ${s.us}:${s.them} – #${p.number} ${p.name}`, true);
+  } else {
+    addGoalEvent({ id: newId(), type: 'oppGoal', ...stamp, number: null, ownGoalBy: id },
+      s => `Gegentor ${s.us}:${s.them} – Eigentor #${p.number} ${p.name}`, false);
+  }
 }
 
-function ownGoalOpp() {
-  const g = liveGame;
-  if (!g || !canScore(g)) return;
-  addGoalEvent({ id: newId(), type: 'ownGoalOpp', ...nowStamp(g) },
-    s => `TOR ${s.us}:${s.them} – Eigentor des Gegners`, true);
-}
-
+// Knopf "Gegentor": Tor des Gegners oder Eigentor des Gegners (zählt für uns)
 async function oppGoalDialog() {
   const g = liveGame;
   if (!g || !canScore(g)) return;
   const stamp = nowStamp(g); // Minute beim Antippen festhalten, nicht erst nach der Eingabe
   let input;
+  let kind = 'oppGoal';
   const ok = await dialog({
-    title: `Gegentor (${minuteLabel(g, stamp)}')`,
-    text: 'Rückennummer des Torschützen (kann leer bleiben):',
-    html: '<input class="num-input" id="opp-num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="z. B. 10">',
+    title: `Tor durch den Gegner (${minuteLabel(g, stamp)}')`,
+    html: `<div class="seg">
+        <button type="button" class="seg-btn on" data-kind="oppGoal">🥅 Gegentor</button>
+        <button type="button" class="seg-btn" data-kind="ownGoalOpp">⚽ Eigentor des Gegners</button>
+      </div>
+      <p class="seg-hint" id="kind-hint">Der Gegner hat ein Tor geschossen.</p>
+      <label class="num-label">Rückennummer des Gegenspielers (kann leer bleiben)
+        <input class="num-input" id="opp-num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="z. B. 10">
+      </label>`,
     init(el) {
       input = el.querySelector('#opp-num');
       input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+      const hint = el.querySelector('#kind-hint');
+      el.querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => {
+        kind = b.dataset.kind;
+        el.querySelectorAll('[data-kind]').forEach(x => x.classList.toggle('on', x === b));
+        hint.textContent = kind === 'oppGoal'
+          ? 'Der Gegner hat ein Tor geschossen.'
+          : 'Ein Gegenspieler hat ins eigene Tor getroffen – das Tor zählt für uns.';
+      }));
       setTimeout(() => input.focus(), 50);
     },
     buttons: [
       { label: 'Abbrechen', value: false, cls: 'ghost' },
-      { label: 'Eintragen', value: true, cls: 'danger' },
+      { label: 'Eintragen', value: true, cls: 'primary' },
     ],
   });
   if (!ok || !liveGame) return;
   const n = parseInt(input.value, 10);
   const number = n >= 1 && n <= 99 ? n : null;
-  addGoalEvent({ id: newId(), type: 'oppGoal', ...stamp, number },
-    s => `Gegentor ${s.us}:${s.them}` + (number ? ` – #${number}` : ''), false);
+  if (kind === 'oppGoal') {
+    addGoalEvent({ id: newId(), type: 'oppGoal', ...stamp, number },
+      s => `Gegentor ${s.us}:${s.them}` + (number ? ` – #${number}` : ''), false);
+  } else {
+    addGoalEvent({ id: newId(), type: 'ownGoalOpp', ...stamp, number },
+      s => `TOR ${s.us}:${s.them} – Eigentor des Gegners` + (number ? ` (#${number})` : ''), true);
+  }
 }
 
 // Tor aus dem Protokoll löschen (auch lange nach dem Eintragen) – mit Sicherheitsabfrage
@@ -553,25 +586,19 @@ function showLog() {
       return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
         <span class="log-text"><b>TOR ${us}:${them}</b> – ${playerText(ev.scorer)}</span>${del}</li>`;
     }
-    if (ev.type === 'ownGoalOpp') {
-      us++;
-      return `<li class="log-row goal">${min}<span class="log-ico">⚽</span>
-        <span class="log-text"><b>TOR ${us}:${them}</b> – Eigentor des Gegners</span>${del}</li>`;
-    }
-    if (ev.type === 'oppGoal') {
-      them++;
-      return `<li class="log-row opp">${min}<span class="log-ico">🥅</span>
-        <span class="log-text"><b>Gegentor ${us}:${them}</b>${ev.number ? ` – #${ev.number}` : ''}</span>${del}</li>`;
+    if (ev.type === 'ownGoalOpp' || ev.type === 'oppGoal') {
+      ev.type === 'oppGoal' ? them++ : us++;
+      const info = goalDetail(g, ev);
+      return `<li class="log-row ${ev.type === 'oppGoal' ? 'opp' : 'goal'}">${min}<span class="log-ico">${ev.type === 'oppGoal' ? '🥅' : '⚽'}</span>
+        <span class="log-text"><b>${ev.type === 'oppGoal' ? 'Gegentor' : 'TOR'} ${us}:${them}</b>${info ? ' – ' + info : ''}</span>${del}</li>`;
     }
     return '';
   }).join('');
   const sh = sheet('Protokoll', `
     ${evs.length ? `<ul class="log">${rows}</ul>` : '<p class="hint">Noch keine Ereignisse.</p>'}
-    <button class="btn wide" id="own-goal-opp">⚽ Eigentor des Gegners (Tor für uns)</button>
     <button class="btn wide" id="edit-log">✏️ Bearbeiten / Nachtragen</button>
     <button class="btn wide" id="to-report">📄 Bericht (Zwischenstand)</button>
     <button class="btn danger wide" id="discard">Spiel verwerfen</button>`);
-  sh.el.querySelector('#own-goal-opp').addEventListener('click', () => { sh.close(); ownGoalOpp(); });
   sh.el.querySelector('#edit-log').addEventListener('click', () => { sh.close(); go('protokoll/' + g.id); });
   sh.el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     sh.close();

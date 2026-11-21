@@ -1,6 +1,6 @@
 'use strict';
 // Spiel anlegen in drei Schritten: Spieldaten → Wer ist dabei? → Startaufstellung
-// Markierung für die Offline-Prüfung in sw.js: build-16
+// Markierung für die Offline-Prüfung in sw.js: build-18
 
 // Der Entwurf wird nach jeder Änderung gespeichert, damit nichts verloren geht,
 // falls das Handy zwischendurch gesperrt wird.
@@ -22,8 +22,21 @@ async function freshDraft() {
     formation: s.formation || { def: 2, mid: 3, att: 1 },
     squad: null,   // IDs der Spieler, die dabei sind
     slots: [],     // Startaufstellung: Spieler-ID je Platz
+    numbers: {},   // Rückennummern für dieses Spiel (Spieler ohne feste Nummer)
   };
   await saveDraft();
+}
+
+// Rückennummer eines Spielers in diesem Spiel
+function gameNumber(p, d) {
+  if (hasFixed(p)) return p.number;
+  const n = d.numbers && d.numbers[p.id];
+  return n === undefined || n === null || n === '' ? null : n;
+}
+
+// Spieler mit den Nummern dieses Spiels (für Spielfeld, Bank und Liste)
+function withGameNumbers(list, d) {
+  return list.map(p => ({ ...p, number: gameNumber(p, d) }));
 }
 
 // Knopf "Neues Spiel" auf der Startseite
@@ -159,6 +172,8 @@ pages.spiel = {
 
 // ---------- Schritt 2: Wer ist dabei? ----------
 
+let pickPlayers = [];
+
 pages.kaderwahl = {
   title: 'Wer ist dabei?',
   async render() {
@@ -174,8 +189,17 @@ pages.kaderwahl = {
     const ids = new Set(players.map(p => p.id));
     if (!d.squad) d.squad = players.map(p => p.id);
     d.squad = d.squad.filter(id => ids.has(id));
+    if (!d.numbers) d.numbers = {};
+    // Spieler ohne feste Nummer: Nummer vom letzten Spiel vorschlagen
+    for (const p of players) {
+      if (!hasFixed(p) && d.numbers[p.id] === undefined && p.lastNumber) d.numbers[p.id] = p.lastNumber;
+    }
     await saveDraft();
+    pickPlayers = players;
+    const open = await openJerseys();
     return `${stepsBar(2)}
+      ${open.length ? `<div class="note jersey-note">🎽 <b>Noch nicht zurückgegebene Trikots:</b>
+        ${open.map(o => `#${esc(o.number)} (${esc(o.name)})`).join(', ')}</div>` : ''}
       <div class="pick-tools">
         <button class="btn ghost" id="all">Alle</button>
         <button class="btn ghost" id="none">Keiner</button>
@@ -184,10 +208,11 @@ pages.kaderwahl = {
         <li><button class="row pick" data-id="${p.id}">
           <span class="tick"></span>
           ${avatar(p)}
-          <span class="num">${esc(p.number)}</span>
-          <span class="name">${esc(p.name)}</span>
+          <span class="num ${hasFixed(p) ? '' : 'muted'}">${hasFixed(p) ? esc(p.number) : '–'}</span>
+          <span class="name">${esc(p.name)}${hasFixed(p) ? '' : '<small class="tag">Nr. wechselt</small>'}</span>
         </button></li>`).join('')}
       </ul>
+      <div id="numbers-area"></div>
       <div class="sticky-foot">
         <div class="count" id="count"></div>
         <p class="error" id="f-err" hidden></p>
@@ -199,12 +224,35 @@ pages.kaderwahl = {
     const d = draft;
     const need = fieldCount(d.formation);
     const rows = [...view.querySelectorAll('.pick')];
+    const numbersArea = document.getElementById('numbers-area');
+    // Eingabefelder für die Nummern der ausgewählten Spieler ohne feste Nummer
+    const drawNumbers = () => {
+      const list = pickPlayers.filter(p => !hasFixed(p) && d.squad.includes(p.id));
+      numbersArea.innerHTML = list.length ? `
+        <h3 class="sub">Rückennummern für dieses Spiel</h3>
+        <p class="hint">Diese Spieler haben keine feste Nummer. Vorgeschlagen ist die Nummer vom letzten Spiel.</p>
+        <div class="num-list">${list.map(p => `
+          <label class="num-row">
+            ${avatar({ ...p, number: null })}
+            <span class="name">${esc(p.name)}</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-num="${p.id}"
+              value="${esc(d.numbers[p.id] || '')}" placeholder="Nr.">
+          </label>`).join('')}
+        </div>` : '';
+      numbersArea.querySelectorAll('[data-num]').forEach(inp => inp.addEventListener('input', () => {
+        inp.value = inp.value.replace(/\D/g, '');
+        const v = parseInt(inp.value, 10);
+        d.numbers[inp.dataset.num] = v >= 1 && v <= 99 ? v : null;
+        saveDraft();
+      }));
+    };
     const refresh = () => {
       const sel = new Set(d.squad);
       rows.forEach(r => r.classList.toggle('on', sel.has(r.dataset.id)));
       const n = d.squad.length;
       document.getElementById('count').innerHTML =
         `<b>${n} dabei</b> · ${Math.min(n, need)} auf dem Feld · ${Math.max(0, n - need)} auf der Bank`;
+      drawNumbers();
     };
     refresh();
     rows.forEach(r => r.addEventListener('click', () => {
@@ -220,12 +268,23 @@ pages.kaderwahl = {
       d.squad = []; refresh(); saveDraft();
     });
     document.getElementById('next').addEventListener('click', () => {
+      const err = document.getElementById('f-err');
+      const fail = msg => { err.textContent = msg; err.hidden = false; };
       if (d.squad.length < need) {
-        const err = document.getElementById('f-err');
-        err.textContent = `Für ${formationText(d.formation)} mit Torwart braucht es mindestens ${need} Spieler. ` +
-          `Wählen Sie mehr Spieler aus oder ändern Sie in Schritt 1 die Formation.`;
-        err.hidden = false;
-        return;
+        return fail(`Für ${formationText(d.formation)} mit Torwart braucht es mindestens ${need} Spieler. ` +
+          `Wählen Sie mehr Spieler aus oder ändern Sie in Schritt 1 die Formation.`);
+      }
+      // Jeder braucht eine Nummer, keine doppelt
+      const chosen = pickPlayers.filter(p => d.squad.includes(p.id));
+      const missing = chosen.filter(p => !gameNumber(p, d));
+      if (missing.length) {
+        return fail(`Bitte eine Rückennummer eintragen für: ${missing.map(p => p.name).join(', ')}.`);
+      }
+      const seen = {};
+      for (const p of chosen) {
+        const n = gameNumber(p, d);
+        if (seen[n]) return fail(`Die Nummer ${n} ist doppelt vergeben (${seen[n]} und ${p.name}).`);
+        seen[n] = p.name;
       }
       // Nicht mehr ausgewählte Spieler aus der Aufstellung nehmen
       d.slots = d.slots.map(id => (id && d.squad.includes(id) ? id : null));
@@ -257,7 +316,7 @@ pages.aufstellung = {
   async after() {
     if (!draft || !draft.squad) return;
     const d = draft;
-    const players = byId(await DB.all('players'));
+    const players = byId(withGameNumbers(await DB.all('players'), d));
     const layout = slotLayout(d.formation);
     d.squad = d.squad.filter(id => players[id]);
     while (d.slots.length < layout.length) d.slots.push(null);
@@ -342,8 +401,15 @@ pages.aufstellung = {
         lineup: [...d.slots],  // Startaufstellung (bleibt unverändert)
         slots: [...d.slots],   // aktuelle Belegung (ändert sich im Spiel)
         events: [],
+        trackJerseys: true,    // Trikot-Rückgabe nach dem Spiel abhaken
+        jerseys: {},           // Spieler-ID → true, wenn Trikot zurück
       };
       await DB.put('games', game);
+      // Nummern der Spieler ohne feste Nummer fürs nächste Spiel merken
+      for (const id of d.squad) {
+        const p = await DB.get('players', id);
+        if (p && !hasFixed(p)) { p.lastNumber = players[id].number; await DB.put('players', p); }
+      }
       await setMeta('current', game.id);
       await setMeta('settings', { team: d.team, halfMinutes: d.halfMinutes, formation: d.formation });
       await delMeta('draft');

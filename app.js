@@ -1,8 +1,8 @@
 'use strict';
 
 // Versionsnummer der App – wird bei jeder Etappe erhöht.
-// Markierung für die Offline-Prüfung in sw.js: build-16
-const APP_VERSION = '8.1 (Vereinsfarben und Anleitung)';
+// Markierung für die Offline-Prüfung in sw.js: build-18
+const APP_VERSION = '8.3 (Foto-Ausschnitt, Nummern pro Spiel, Trikots)';
 
 const view = document.getElementById('view');
 const titleEl = document.getElementById('title');
@@ -23,15 +23,22 @@ function initials(name) {
   return ((parts[0] || '')[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '');
 }
 
-// Rundes Spielerbild; ohne Foto ein grüner Kreis mit Rückennummer (oder Initialen)
+// Rundes Spielerbild; ohne Foto ein Kreis mit Rückennummer (oder Initialen)
 function avatar(p, cls = '', inner) {
+  const hasNum = p.number !== null && p.number !== undefined && p.number !== '';
   return p.photo
     ? `<img class="avatar ${cls}" src="${p.photo}" alt="">`
-    : `<span class="avatar ph ${cls}">${esc(inner !== undefined ? inner : p.number)}</span>`;
+    : `<span class="avatar ph ${cls}">${esc(inner !== undefined ? inner : hasNum ? p.number : initials(p.name))}</span>`;
+}
+
+// Hat der Spieler eine feste Rückennummer? (ältere Einträge ohne Angabe: ja)
+function hasFixed(p) {
+  return p.fixedNumber !== false;
 }
 
 function sortPlayers(list) {
-  return list.sort((a, b) => a.number - b.number || a.name.localeCompare(b.name, 'de'));
+  const n = p => (p.number === null || p.number === undefined || p.number === '' ? 999 : +p.number);
+  return list.sort((a, b) => n(a) - n(b) || String(a.name).localeCompare(String(b.name), 'de'));
 }
 
 function byId(list) {
@@ -69,7 +76,7 @@ async function currentGame() {
 
 // Dialog mit Knöpfen; liefert den Wert des gedrückten Knopfs.
 // Optional: eigener Inhalt (html) und init(el), um ihn zu bedienen.
-function dialog({ title, text, html, init, buttons }) {
+function dialog({ title, text, html, init, buttons, stacked }) {
   return new Promise(resolve => {
     const wrap = document.createElement('div');
     wrap.className = 'dlg-wrap';
@@ -77,7 +84,7 @@ function dialog({ title, text, html, init, buttons }) {
       ${title ? `<h2>${esc(title)}</h2>` : ''}
       ${text ? `<p>${esc(text)}</p>` : ''}
       ${html ? `<div class="dlg-body">${html}</div>` : ''}
-      <div class="dlg-btns">
+      <div class="dlg-btns ${stacked ? 'stacked' : ''}">
         ${buttons.map((b, i) => `<button data-i="${i}" class="btn ${b.cls || ''}">${esc(b.label)}</button>`).join('')}
       </div></div>`;
     wrap.addEventListener('click', e => {
@@ -143,8 +150,8 @@ function hideToast() {
 pages.start = {
   title: 'Spieltag',
   async render() {
-    const [players, game, draft, games, lastBackup] = await Promise.all([
-      DB.all('players'), currentGame(), getMeta('draft'), DB.all('games'), getMeta('lastBackup')]);
+    const [players, game, draft, games, lastBackup, open] = await Promise.all([
+      DB.all('players'), currentGame(), getMeta('draft'), DB.all('games'), getMeta('lastBackup'), openJerseys()]);
     const n = players.length;
     const ended = games.filter(g => g.clock && g.clock.phase === 'end').length;
     return `
@@ -160,12 +167,18 @@ pages.start = {
             <span class="sym">📝</span>
             <span>Spiel weiter vorbereiten<small>${esc(draft.team || '…')} – ${esc(draft.opponent || '…')}</small></span>
           </button>` : ''}
+        ${open.length ? `<button class="menu-btn warn-card" data-go="trikots">
+            <span class="sym">🎽</span>
+            <span>${open.length} ${open.length === 1 ? 'Trikot' : 'Trikots'} noch nicht zurück
+              <small>${esc(open.slice(0, 4).map(o => `#${o.number} ${String(o.name).split(' ')[0]}`).join(', '))}${open.length > 4 ? ' …' : ''}</small></span>
+          </button>` : ''}
         ${menuBtn('kader', '👕', 'Kader', n ? `${n} Spieler` : 'Spieler anlegen und ändern')}
         <button class="menu-btn" id="new-game">
           <span class="sym">⚽</span>
           <span>Neues Spiel<small>Aufstellung und los geht’s</small></span>
         </button>
         ${menuBtn('archiv', '📋', 'Archiv', ended ? `${ended} ${ended === 1 ? 'Spiel' : 'Spiele'} · Torschützenliste` : 'Beendete Spiele und Torschützen')}
+        ${open.length ? '' : menuBtn('trikots', '🎽', 'Trikots', 'Rückgabe abhaken · alle zurück ✓')}
         ${menuBtn('sicherung', '💾', 'Sicherung', backupAgeText(lastBackup))}
         <a class="menu-btn help" href="anleitung.html">
           <span class="sym">❓</span>

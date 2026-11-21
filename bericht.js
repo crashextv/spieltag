@@ -1,7 +1,7 @@
 'use strict';
 // Spielbericht: Endstand, Spielzeit, Aufstellung, Tore und Wechsel im Liveticker-Stil.
 // Zum Kopieren (DFBnet), Herunterladen (Textdatei) und Teilen.
-// Markierung für die Offline-Prüfung in sw.js: build-16
+// Markierung für die Offline-Prüfung in sw.js: build-18
 
 function fmtMs(ms) {
   const s = Math.round(ms / 1000);
@@ -46,10 +46,11 @@ function reportData(g) {
       ticker.push({ min, kind: 'goal', text: `TOR ${us}:${them} – ${pl(ev.scorer)}` });
     } else if (ev.type === 'ownGoalOpp') {
       us++;
-      ticker.push({ min, kind: 'goal', text: `TOR ${us}:${them} – Eigentor des Gegners` });
+      ticker.push({ min, kind: 'goal', text: `TOR ${us}:${them} – Eigentor des Gegners` + (ev.number ? ` (#${ev.number})` : '') });
     } else if (ev.type === 'oppGoal') {
       them++;
-      ticker.push({ min, kind: 'opp', text: `Gegentor ${us}:${them}` + (ev.number ? ` – #${ev.number}` : '') });
+      ticker.push({ min, kind: 'opp', text: `Gegentor ${us}:${them}` +
+        (ev.ownGoalBy ? ` – Eigentor ${pl(ev.ownGoalBy)}` : ev.number ? ` – #${ev.number}` : '') });
     } else if (ev.type === 'sub') {
       ticker.push({ min, kind: 'sub', text: `Wechsel – rein ${pl(ev.in)}, raus ${pl(ev.out)}`,
         html: `<span class="arr-in">▲</span> ${esc(pl(ev.in))}<br><span class="arr-out">▼</span> ${esc(pl(ev.out))}` });
@@ -162,6 +163,8 @@ pages.bericht = {
         ${navigator.share ? '<button class="btn" id="rep-share">📤 Teilen</button>' : ''}
       </div>
       <button class="btn wide" id="rep-edit">✏️ Protokoll bearbeiten / nachtragen</button>
+      ${tracksJerseys(reportGame) ? `<button class="btn wide ${openCount(reportGame) ? 'warn-btn' : ''}" id="rep-jerseys">🎽 Trikot-Rückgabe
+        ${openCount(reportGame) ? `(${openCount(reportGame)} offen)` : '✓'}</button>` : ''}
 
       <h3 class="sub">Spielzeit</h3>
       <div class="rep-box">
@@ -193,6 +196,8 @@ pages.bericht = {
     if (!g) return;
     const text = reportText(g);
     document.getElementById('rep-edit').addEventListener('click', () => go('protokoll/' + g.id));
+    const jb = document.getElementById('rep-jerseys');
+    if (jb) jb.addEventListener('click', () => go('trikots/' + g.id));
     const delBtn = document.getElementById('rep-delete');
     if (delBtn) delBtn.addEventListener('click', () => deleteGameForever(g));
     document.getElementById('rep-copy').addEventListener('click', async () => {

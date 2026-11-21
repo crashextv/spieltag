@@ -1,4 +1,4 @@
-/* Markierung für die Offline-Prüfung in sw.js: build-16 */
+/* Markierung für die Offline-Prüfung in sw.js: build-18 */
 :root {
   /* Hauptfarbe: Vereinsrot TuRa 1893 */
   --primaer: #a80607;
@@ -660,7 +660,8 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 .ev-row.opp .log-text b { color: #b71c1c; }
 .ev-row .chev { align-self: center; }
 .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.type-grid .btn { min-height: 64px; font-size: 17px; }
+.type-grid .btn { min-height: 64px; font-size: 17px; flex-direction: column; gap: 0; line-height: 1.2; }
+.type-grid .btn small { font-size: 13px; font-weight: 400; color: var(--text-leise); }
 .field select {
   display: block;
   width: 100%;
@@ -776,6 +777,128 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 .sheet h2 { margin: 8px 0 12px; font-size: 19px; }
 .grip { width: 40px; height: 5px; margin: 4px auto; border-radius: 3px; background: #ccc; }
 
+/* ---------- Foto-Ausschnitt ---------- */
+
+.crop-dlg { max-width: 360px; }
+.crop-dlg p { margin-bottom: 12px; font-size: 15px; }
+.crop-box {
+  position: relative;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #222;
+  touch-action: none;
+  cursor: grab;
+}
+.crop-box img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+/* Kreis = sichtbarer Bereich, außen abgedunkelt */
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(0,0,0,.55);
+  outline: 2px solid rgba(255,255,255,.9);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+.crop-zoom { display: flex; align-items: center; gap: 10px; margin: 14px 4px 16px; font-size: 22px; font-weight: 700; color: var(--text-leise); }
+.crop-zoom input { flex: 1; accent-color: var(--primaer-hell); height: 28px; }
+
+/* ---------- Kader: feste Nummer ---------- */
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.check-line input { width: 26px; height: 26px; accent-color: var(--primaer-hell); }
+.row .num.muted { color: var(--text-leise); font-weight: 400; }
+.row .name .tag { display: block; width: fit-content; margin: 2px 0 0; }
+.tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: #e9e6e6;
+  color: var(--text-leise);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* ---------- Nummern pro Spiel ---------- */
+
+.num-list { display: grid; gap: 8px; margin-bottom: 8px; }
+.num-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+  background: var(--karte);
+}
+.num-row .avatar { width: 44px; height: 44px; font-size: 16px; }
+.num-row .name { flex: 1; font-size: 18px; }
+.num-row input {
+  width: 72px;
+  padding: 10px;
+  border: 2px solid var(--rand);
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+.num-row input:focus { outline: none; border-color: var(--primaer-hell); }
+
+/* ---------- Trikots ---------- */
+
+.menu-btn.warn-card { background: #fff3cd; border-color: #f0c36d; }
+.menu-btn.warn-card small { color: #7a5800; }
+.status.warn-box { background: #fff3cd; border-color: #f0c36d; color: #5d4300; }
+.btn.warn-btn { background: #fff3cd; border-color: #f0c36d; color: #5d4300; }
+.jersey-note { margin: 0 0 12px; }
+.jersey-game {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--rand);
+  border-radius: 16px;
+  background: var(--karte);
+}
+.jg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 16px; }
+.jg-count { flex-shrink: 0; padding: 3px 10px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+.jg-count.open { background: #fff3cd; color: #7a5800; }
+.jg-count.done { background: #e3f2e3; color: var(--erfolg); }
+.row.jersey { opacity: 1; }
+.row.jersey .where { font-weight: 700; color: #b26a00; }
+.row.jersey.on .where { color: var(--erfolg); }
+.row.jersey.on .tick { background: var(--erfolg); border-color: var(--erfolg); }
+.row.jersey.on { border-color: var(--erfolg); background: #f3faf3; }
+.jersey-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px 10px 14px 14px;
+  background: var(--primaer-hell);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 800;
+}
+
 /* ---------- Dialog und Meldung ---------- */
 
 .dlg-wrap {
@@ -799,6 +922,27 @@ body.live-mode .toast { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-
 .dlg p { margin: 0 0 18px; color: var(--text-leise); line-height: 1.4; }
 .dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }
 .dlg-btns .btn { flex: 1; }
+.dlg-btns.stacked { flex-direction: column; }
+.dlg-btns.stacked .btn { width: 100%; }
+.dlg-btns .btn.big { min-height: 60px; font-size: 19px; }
+
+/* Umschalter im Gegentor-Fenster */
+.seg { display: flex; gap: 6px; padding: 4px; border-radius: 12px; background: #e9e6e6; }
+.seg-btn {
+  flex: 1;
+  min-height: 52px;
+  padding: 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-leise);
+  font-size: 15px;
+  font-weight: 700;
+}
+.seg-btn.on { background: var(--karte); color: var(--primaer); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg-hint { margin: 8px 0 12px !important; font-size: 15px; }
+.num-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-leise); }
+.num-label .num-input { margin-top: 6px; }
 
 .toast {
   position: fixed;

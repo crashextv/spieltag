@@ -1,9 +1,9 @@
 'use strict';
 // Protokoll bearbeiten: Einträge ändern, löschen und von Hand nachtragen.
 // Funktioniert für das laufende und für beendete Spiele.
-// Markierung für die Offline-Prüfung in sw.js: build-16
+// Markierung für die Offline-Prüfung in sw.js: build-18
 
-const EV_NAMES = { goal: 'Tor', oppGoal: 'Gegentor', ownGoalOpp: 'Eigentor des Gegners', sub: 'Wechsel' };
+const EV_NAMES = { goal: 'Tor', oppGoal: 'Gegentor', ownGoalOpp: 'Eigentor des Gegners', ownGoalOur: 'Eigentor (eigener Spieler)', sub: 'Wechsel' };
 
 function rosterText(g, id) {
   const p = g.roster && g.roster[id];
@@ -32,15 +32,28 @@ function parseMinute(g, str) {
   return null;
 }
 
+// Wer hat das Tor gemacht? (HTML, leer = unbekannt)
+//  goal: eigener Torschütze · ownGoalOpp: Eigentor des Gegners (zählt für uns)
+//  oppGoal: Gegentor – entweder Gegenspieler-Nummer oder Eigentor eines eigenen Spielers (ownGoalBy)
+function goalDetail(g, ev) {
+  if (ev.type === 'goal') return rosterText(g, ev.scorer);
+  if (ev.type === 'ownGoalOpp') return 'Eigentor des Gegners' + (ev.number ? ` (#${ev.number})` : '');
+  if (ev.type === 'oppGoal') {
+    if (ev.ownGoalBy) return `Eigentor ${rosterText(g, ev.ownGoalBy)}`;
+    return ev.number ? `#${ev.number}` : '';
+  }
+  return '';
+}
+
 // Beschreibung eines Eintrags (HTML) mit Zwischenstand
 function eventLines(g) {
   const evs = [...g.events].sort((a, b) => a.half - b.half || a.sec - b.sec);
   let us = 0, them = 0;
   return evs.map(ev => {
     let ico = '', html = '', cls = '';
-    if (ev.type === 'goal') { us++; ico = '⚽'; cls = 'goal'; html = `<b>TOR ${us}:${them}</b> – ${rosterText(g, ev.scorer)}`; }
-    else if (ev.type === 'ownGoalOpp') { us++; ico = '⚽'; cls = 'goal'; html = `<b>TOR ${us}:${them}</b> – Eigentor des Gegners`; }
-    else if (ev.type === 'oppGoal') { them++; ico = '🥅'; cls = 'opp'; html = `<b>Gegentor ${us}:${them}</b>${ev.number ? ` – #${ev.number}` : ''}`; }
+    const d = goalDetail(g, ev);
+    if (ev.type === 'goal' || ev.type === 'ownGoalOpp') { us++; ico = '⚽'; cls = 'goal'; html = `<b>TOR ${us}:${them}</b>${d ? ' – ' + d : ''}`; }
+    else if (ev.type === 'oppGoal') { them++; ico = '🥅'; cls = 'opp'; html = `<b>Gegentor ${us}:${them}</b>${d ? ' – ' + d : ''}`; }
     else if (ev.type === 'sub') {
       ico = '⇄';
       html = `<span class="arr-in">▲</span> ${rosterText(g, ev.in)}<br><span class="arr-out">▼</span> ${rosterText(g, ev.out)}`;
@@ -61,9 +74,10 @@ async function confirmDeleteEvent(g, ev) {
       us: now.us - (ev.type === 'oppGoal' ? 0 : 1),
       them: now.them - (ev.type === 'oppGoal' ? 1 : 0),
     };
-    const what = ev.type === 'goal' ? `Tor von ${rosterText(g, ev.scorer)}`
-      : ev.type === 'ownGoalOpp' ? 'Eigentor des Gegners'
-      : `Gegentor${ev.number ? ` von #${ev.number}` : ''}`;
+    const d = goalDetail(g, ev);
+    const what = ev.type === 'goal' ? `Tor von ${d}`
+      : ev.type === 'ownGoalOpp' ? d
+      : `Gegentor${d ? ` (${d})` : ''}`;
     text = `${minuteLabel(g, ev)}' ${what} wird gelöscht. Der Spielstand ändert sich von ${now.us}:${now.them} auf ${after.us}:${after.them}.`;
   }
   const ok = await dialog({
@@ -148,7 +162,8 @@ function chooseType(g) {
       <button class="btn" data-t="goal">⚽ Tor</button>
       <button class="btn" data-t="oppGoal">🥅 Gegentor</button>
       <button class="btn" data-t="sub">⇄ Wechsel</button>
-      <button class="btn" data-t="ownGoalOpp">⚽ Eigentor Gegner</button>
+      <button class="btn" data-t="ownGoalOpp">⚽ Eigentor Gegner<br><small>(Tor für uns)</small></button>
+      <button class="btn" data-t="ownGoalOur">🥅 Eigentor eigener Spieler<br><small>(Tor für Gegner)</small></button>
     </div>`);
   sh.el.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => {
     sh.close();
@@ -164,15 +179,19 @@ function playerOptions(g, selected) {
 // Formular zum Ändern (ev gesetzt) oder Nachtragen (type gesetzt)
 function eventSheet(g, ev, type) {
   const isNew = !ev;
-  type = ev ? ev.type : type;
+  // "ownGoalOur" ist nur eine Formular-Variante: gespeichert wird ein Gegentor mit ownGoalBy
+  type = ev ? (ev.type === 'oppGoal' && ev.ownGoalBy ? 'ownGoalOur' : ev.type) : type;
   const H = g.halfMinutes;
   const minVal = ev ? minuteLabel(g, ev) : '';
   let fields = '';
   if (type === 'goal') {
     fields = `<label class="field">Torschütze
       <select id="f-p1">${isNew ? '<option value="">– bitte wählen –</option>' : ''}${playerOptions(g, ev && ev.scorer)}</select></label>`;
-  } else if (type === 'oppGoal') {
-    fields = `<label class="field">Rückennummer des Gegners (kann leer bleiben)
+  } else if (type === 'ownGoalOur') {
+    fields = `<label class="field">Wer hat ins eigene Tor getroffen?
+      <select id="f-p1">${isNew ? '<option value="">– bitte wählen –</option>' : ''}${playerOptions(g, ev && ev.ownGoalBy)}</select></label>`;
+  } else if (type === 'oppGoal' || type === 'ownGoalOpp') {
+    fields = `<label class="field">Rückennummer des Gegenspielers (kann leer bleiben)
       <input id="f-num" type="text" inputmode="numeric" maxlength="2" value="${ev && ev.number ? ev.number : ''}"></label>`;
   } else if (type === 'sub') {
     fields = `<label class="field"><span class="arr-in">▲</span> Rein
@@ -201,11 +220,15 @@ function eventSheet(g, ev, type) {
     if (!stamp) return fail(`Bitte eine Minute von 1 bis ${2 * H} eingeben – oder Nachspielzeit wie ${H}+2 bzw. ${2 * H}+3.`);
     // Minute unverändert → genaue Sekunde behalten (Reihenfolge bleibt gleich)
     if (ev && minuteLabel(g, ev) === minuteLabel(g, stamp)) stamp = { half: ev.half, sec: ev.sec };
-    const data = { id: ev ? ev.id : newId(), type, ...stamp };
+    const data = { id: ev ? ev.id : newId(), type: type === 'ownGoalOur' ? 'oppGoal' : type, ...stamp };
     if (type === 'goal') {
       data.scorer = $('#f-p1').value;
       if (!data.scorer) return fail('Bitte den Torschützen wählen.');
-    } else if (type === 'oppGoal') {
+    } else if (type === 'ownGoalOur') {
+      data.ownGoalBy = $('#f-p1').value;
+      data.number = null;
+      if (!data.ownGoalBy) return fail('Bitte den Spieler wählen.');
+    } else if (type === 'oppGoal' || type === 'ownGoalOpp') {
       const n = parseInt($('#f-num').value, 10);
       data.number = n >= 1 && n <= 99 ? n : null;
     } else if (type === 'sub') {

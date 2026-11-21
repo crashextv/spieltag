@@ -4,13 +4,13 @@
 //
 // Bei jeder neuen Version BUILD erhöhen – und in allen Dateien der Liste
 // CHECKED die Markierung "build-N" auf dieselbe Zahl setzen.
-const BUILD = 16;
+const BUILD = 18;
 const CACHE = 'spieltag-v' + BUILD;
 const MARK = 'build-' + BUILD;
 
 // Diese Dateien müssen die Markierung enthalten. So merken wir, wenn der
 // Server noch alte Dateien liefert (GitHub braucht manchmal ein paar Minuten).
-const CHECKED = ['./index.html', './app.css', './db.js', './app.js', './kader.js', './pitch.js', './spiel.js', './live.js', './bericht.js', './protokoll.js', './archiv.js'];
+const CHECKED = ['./index.html', './app.css', './db.js', './app.js', './kader.js', './pitch.js', './spiel.js', './live.js', './bericht.js', './protokoll.js', './archiv.js', './trikots.js'];
 const OTHER = [
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -20,7 +20,8 @@ const OTHER = [
   // Anleitung (auch offline lesbar)
   './anleitung.html',
   ...['start', 'kader', 'spieler', 'spiel1', 'spiel2', 'spiel3', 'live-start', 'live-bank', 'live-wechsel',
-    'tor', 'gegentor', 'protokoll', 'bericht', 'bearbeiten', 'nachtragen', 'archiv', 'sicherung']
+    'tor', 'gegentor', 'protokoll', 'bericht', 'bearbeiten', 'nachtragen', 'archiv', 'sicherung',
+    'ausschnitt', 'nummern', 'trikots']
     .map(n => `./anleitung/${n}.jpg`),
 ];
 

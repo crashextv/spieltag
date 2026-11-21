@@ -1,6 +1,6 @@
 'use strict';
 // Archiv (beendete Spiele, Torschützenliste) und Datensicherung
-// Markierung für die Offline-Prüfung in sw.js: build-16
+// Markierung für die Offline-Prüfung in sw.js: build-18
 
 function isEnded(g) { return !!(g.clock && g.clock.phase === 'end'); }
 
@@ -24,7 +24,9 @@ function scorerTable(games, kader) {
     if (!rows[id]) {
       const now = kader[id];
       const snap = (g.roster && g.roster[id]) || {};
-      rows[id] = { id, name: now ? now.name : snap.name, number: now ? now.number : snap.number, goals: 0, games: 0 };
+      // Feste Nummer aus dem Kader; bei wechselnden Nummern keine Nummer anzeigen
+      const number = now ? (hasFixed(now) ? now.number : null) : snap.number;
+      rows[id] = { id, name: now ? now.name : snap.name, number, goals: 0, games: 0 };
     }
     return rows[id];
   };
@@ -65,7 +67,7 @@ pages.archiv = {
             // Gleich viele Tore = gleicher Platz
             const rank = 1 + table.filter(o => o.goals > r.goals).length;
             return `<div class="sc-row ${r.goals ? '' : 'zero'}">
-            <span><b class="sc-rank">${r.goals ? rank + '.' : ''}</b> #${esc(r.number)} ${esc(r.name)}</span>
+            <span><b class="sc-rank">${r.goals ? rank + '.' : ''}</b> ${r.number ? '#' + esc(r.number) + ' ' : ''}${esc(r.name)}</span>
             <span class="sc-num">${r.goals}</span><span class="sc-num">${r.games}</span></div>`;
           }).join('')}
         </div>`;
